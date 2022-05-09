@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 
 final _kbdSupportedPlatform = (kIsWeb || Platform.isAndroid || Platform.isIOS);
 
@@ -15,6 +16,12 @@ const int _maxDayPickerRowCount = 6; // A 31 day month that starts on Saturday.
 // One extra row for the day-of-week header.
 const double _maxDayPickerHeight =
     _dayPickerRowHeight * (_maxDayPickerRowCount + 1);
+
+final _dateTimeFormats = {
+  'date': DateFormat.yMd(),
+  'time': DateFormat.jm(),
+  'datetime': DateFormat.yMd().add_jm(),
+};
 
 /*
  * TODO
@@ -55,6 +62,8 @@ class VscDatetimeField extends StatefulWidget {
 
   final bool readOnly;
 
+  final DateTime? initialValue;
+
   const VscDatetimeField({
     Key? key,
     this.pickerVerticalOffset = 5.0,
@@ -63,6 +72,7 @@ class VscDatetimeField extends StatefulWidget {
     this.autoFlipDirection = true,
     required this.onDatetimeSelected,
     this.readOnly = false,
+    this.initialValue,
   }) : super(key: key);
 
   @override
@@ -70,13 +80,15 @@ class VscDatetimeField extends StatefulWidget {
 }
 
 class _VscDatetimeFieldState extends State<VscDatetimeField> {
-  FocusNode? _focusNode;
-  TextEditingController? _textEditingController;
+  late final FocusNode _focusNode = FocusNode();
+  late final TextEditingController _textEditingController =
+      TextEditingController();
   late final _PickerBox _pickerBox;
 
-  TextEditingController? get _effectiveController =>
+  TextEditingController get _effectiveController =>
       widget.textFieldConfiguration.controller ?? _textEditingController;
-  FocusNode? get _effectiveFocusNode =>
+
+  FocusNode get _effectiveFocusNode =>
       widget.textFieldConfiguration.focusNode ?? _focusNode;
   late VoidCallback _focusNodeListener;
 
@@ -89,30 +101,25 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
 
   final _textFieldGlobalKey = GlobalKey();
 
+  DateTime? _value;
+
   @override
   void initState() {
     super.initState();
 
-    if (widget.textFieldConfiguration.controller == null) {
-      _textEditingController = TextEditingController();
-    }
-
-    if (widget.textFieldConfiguration.focusNode == null) {
-      _focusNode = FocusNode();
-    }
-
+    _setValue(widget.initialValue);
     _pickerBox =
         _PickerBox(context, widget.direction, widget.autoFlipDirection);
 
     _focusNodeListener = () {
-      if (_effectiveFocusNode!.hasFocus) {
+      if (_effectiveFocusNode.hasFocus) {
         _pickerBox.open();
       } else {
         _pickerBox.close();
       }
     };
 
-    _effectiveFocusNode!.addListener(_focusNodeListener);
+    _effectiveFocusNode.addListener(_focusNodeListener);
 
     // hide Picker Box on keyboard closed
     _keyboardVisibilitySubscription =
@@ -127,7 +134,7 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
         _pickerBox.resize();
 
         // in case we already missed the focus event
-        if (_effectiveFocusNode!.hasFocus) {
+        if (_effectiveFocusNode.hasFocus) {
           _pickerBox.open();
         }
       }
@@ -139,9 +146,9 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
     _pickerBox.close();
     _pickerBox.widgetMounted = false;
     _keyboardVisibilitySubscription?.cancel();
-    _effectiveFocusNode!.removeListener(_focusNodeListener);
-    _focusNode?.dispose();
-    _textEditingController?.dispose();
+    _effectiveFocusNode.removeListener(_focusNodeListener);
+    _focusNode.dispose();
+    _textEditingController.dispose();
     super.dispose();
   }
 
@@ -149,11 +156,23 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
     _pickerBox._overlayEntry = OverlayEntry(builder: (context) {
       final picker = Card(
         child: CalendarDatePicker(
-          initialDate: DateTime.now(),
+          initialDate: _value ?? DateTime.now(),
+          // TODO pass these values in
           firstDate: DateTime.parse('1000-01-01'),
           lastDate: DateTime.parse('3000-01-01'),
-          onDateChanged: (DateTime value) {
-            // TODO Modify the field's DateTime, sans the time component.
+          onDateChanged: (DateTime newValue) {
+            // Modify the field's DateTime, sans the time component.
+            final currValue = _value ?? DateTime.now();
+            _setValue(DateTime(
+              newValue.year,
+              newValue.month,
+              newValue.day,
+              currValue.hour,
+              currValue.minute,
+              currValue.second,
+              currValue.millisecond,
+              currValue.microsecond,
+            ));
           },
         ),
       );
@@ -161,13 +180,6 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
       final renderBox =
           _textFieldGlobalKey.currentContext?.findRenderObject() as RenderBox?;
       final overlayWidth = min((renderBox?.size.width ?? 100.0), 400.0);
-
-      var addlVerticalOffset = 0.0;
-      if (widget.textFieldConfiguration.decoration.errorText != null) {
-        addlVerticalOffset =
-            widget.textFieldConfiguration.decoration.errorStyle?.fontSize ??
-                0.0;
-      }
 
       // TODO If it won't fit below, try above (automatically done), then left or right. We can control the width somewhat.
       //   Or, if no room, don't display it.
@@ -197,47 +209,87 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
 
   @override
   Widget build(BuildContext context) {
-    // if (event.logicalKey == LogicalKeyboardKey.escape) {
-    //   _pickerBox.close();
-    // }
-    return CompositedTransformTarget(
-      link: _layerLink,
-      child: TextField(
-        key: _textFieldGlobalKey,
-        focusNode: _effectiveFocusNode,
-        controller: _effectiveController,
-        decoration: widget.textFieldConfiguration.decoration,
-        style: widget.textFieldConfiguration.style,
-        textAlign: widget.textFieldConfiguration.textAlign,
-        enabled: widget.textFieldConfiguration.enabled,
-        keyboardType: widget.textFieldConfiguration.keyboardType,
-        autofocus: widget.textFieldConfiguration.autofocus,
-        inputFormatters: widget.textFieldConfiguration.inputFormatters,
-        autocorrect: widget.textFieldConfiguration.autocorrect,
-        maxLines: widget.textFieldConfiguration.maxLines,
-        textAlignVertical: widget.textFieldConfiguration.textAlignVertical,
-        minLines: widget.textFieldConfiguration.minLines,
-        maxLength: widget.textFieldConfiguration.maxLength,
-        maxLengthEnforcement:
-            widget.textFieldConfiguration.maxLengthEnforcement,
-        obscureText: widget.textFieldConfiguration.obscureText,
-        onChanged: widget.textFieldConfiguration.onChanged,
-        onSubmitted: widget.textFieldConfiguration.onSubmitted,
-        onEditingComplete: widget.textFieldConfiguration.onEditingComplete,
-        onTap: widget.textFieldConfiguration.onTap,
-        scrollPadding: widget.textFieldConfiguration.scrollPadding,
-        textInputAction: widget.textFieldConfiguration.textInputAction,
-        textCapitalization: widget.textFieldConfiguration.textCapitalization,
-        keyboardAppearance: widget.textFieldConfiguration.keyboardAppearance,
-        cursorWidth: widget.textFieldConfiguration.cursorWidth,
-        cursorRadius: widget.textFieldConfiguration.cursorRadius,
-        cursorColor: widget.textFieldConfiguration.cursorColor,
-        textDirection: widget.textFieldConfiguration.textDirection,
-        enableInteractiveSelection:
-            widget.textFieldConfiguration.enableInteractiveSelection,
-        readOnly: widget.readOnly,
+    return Focus(
+      // Focus is used to intercept Esc key events without taking focus.
+      canRequestFocus: false,
+      onKey: (node, event) {
+        if (event.logicalKey == LogicalKeyboardKey.escape) {
+          _pickerBox.close();
+          return KeyEventResult.handled;
+        }
+
+        return KeyEventResult.ignored;
+      },
+      child: CompositedTransformTarget(
+        link: _layerLink,
+        child: TextField(
+          key: _textFieldGlobalKey,
+          focusNode: _effectiveFocusNode,
+          controller: _effectiveController,
+          decoration: widget.textFieldConfiguration.decoration.copyWith(
+            suffixIcon:
+                //Icons.clear_outlined TODO - should be second icon?
+                _value == null || widget.readOnly
+                    ? InkWell(
+                        canRequestFocus: false,
+                        child: const Icon(Icons.event_outlined),
+                        onTap: widget.readOnly
+                            ? null
+                            : () {
+                                if (_pickerBox.isOpened) {
+                                  _pickerBox.close();
+                                } else {
+                                  _pickerBox.open();
+                                  _effectiveFocusNode.requestFocus();
+                                }
+                              },
+                      )
+                    : InkWell(
+                        child: const Icon(Icons.clear_outlined),
+                        onTap: () => _setValue(null),
+                      ),
+          ),
+          style: widget.textFieldConfiguration.style,
+          textAlign: widget.textFieldConfiguration.textAlign,
+          enabled: widget.textFieldConfiguration.enabled,
+          keyboardType: widget.textFieldConfiguration.keyboardType,
+          autofocus: widget.textFieldConfiguration.autofocus,
+          inputFormatters: widget.textFieldConfiguration.inputFormatters,
+          autocorrect: widget.textFieldConfiguration.autocorrect,
+          maxLines: widget.textFieldConfiguration.maxLines,
+          textAlignVertical: widget.textFieldConfiguration.textAlignVertical,
+          minLines: widget.textFieldConfiguration.minLines,
+          maxLength: widget.textFieldConfiguration.maxLength,
+          maxLengthEnforcement:
+              widget.textFieldConfiguration.maxLengthEnforcement,
+          obscureText: widget.textFieldConfiguration.obscureText,
+          onChanged: widget.textFieldConfiguration.onChanged,
+          onSubmitted: widget.textFieldConfiguration.onSubmitted,
+          onEditingComplete: widget.textFieldConfiguration.onEditingComplete,
+          onTap: widget.textFieldConfiguration.onTap,
+          scrollPadding: widget.textFieldConfiguration.scrollPadding,
+          textInputAction: widget.textFieldConfiguration.textInputAction,
+          textCapitalization: widget.textFieldConfiguration.textCapitalization,
+          keyboardAppearance: widget.textFieldConfiguration.keyboardAppearance,
+          cursorWidth: widget.textFieldConfiguration.cursorWidth,
+          cursorRadius: widget.textFieldConfiguration.cursorRadius,
+          cursorColor: widget.textFieldConfiguration.cursorColor,
+          textDirection: widget.textFieldConfiguration.textDirection,
+          enableInteractiveSelection:
+              widget.textFieldConfiguration.enableInteractiveSelection,
+          readOnly: widget.readOnly,
+        ),
       ),
     );
+  }
+
+  void _setValue(DateTime? newValue) {
+    _value = newValue;
+    _effectiveController.text =
+        _value == null ? '' : DateFormat.yMd().add_jm().format(_value!);
+    _effectiveController.selection =
+        TextSelection.collapsed(offset: _effectiveController.text.length);
+    setState(() {});
   }
 }
 

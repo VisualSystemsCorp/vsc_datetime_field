@@ -82,6 +82,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   )),
                   readOnly: true,
                   onDatetimeSelected: (value) {},
+                  initialValue: DateTime.parse('2012-12-31'),
                 ),
               ],
             ),

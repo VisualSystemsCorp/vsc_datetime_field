@@ -12,13 +12,13 @@ dependencies:
     sdk: flutter
 
   flutter_keyboard_visibility: ^5.2.0
-
+  intl: ^0.17.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
 
-  flutter_lints: ^1.0.0
+  flutter_lints: ^1.0.4
 
 flutter:
 
