@@ -17,16 +17,16 @@ const int _maxDayPickerRowCount = 6; // A 31 day month that starts on Saturday.
 const double _maxDayPickerHeight =
     _dayPickerRowHeight * (_maxDayPickerRowCount + 1);
 
-final _dateTimeFormats = {
-  'date': DateFormat.yMd(),
-  'time': DateFormat.jm(),
-  'datetime': DateFormat.yMd().add_jm(),
-};
-
 /*
  * TODO
+ *  - Parse 12/31/22 (ambiguous year)
+ *  - If we have an internal error on the field, leave the errant text on loss of focus
+ *  - Slide popup down for error text.
+ *  - start/end date
+ *  - date vs datetime mode
  *  - Sometimes there's just not enough room with the kbd open on mobile. Don't show any picker in this case.
  *    But if the kbd closes, recalculate
+ *  - Separate time field.
  */
 
 class VscDatetimeField extends StatefulWidget {
@@ -64,7 +64,10 @@ class VscDatetimeField extends StatefulWidget {
 
   final DateTime? initialValue;
 
-  const VscDatetimeField({
+  /// [DateFormat]s to be used in parsing user-entered dates or datetimes, in order of precedence.
+  late final List<DateFormat> parserFormats;
+
+  VscDatetimeField({
     Key? key,
     this.pickerVerticalOffset = 5.0,
     this.direction = AxisDirection.down,
@@ -73,13 +76,25 @@ class VscDatetimeField extends StatefulWidget {
     required this.onDatetimeSelected,
     this.readOnly = false,
     this.initialValue,
-  }) : super(key: key);
+    List<DateFormat>? parserFormats,
+  }) : super(key: key) {
+    // TODO if (datetime)...
+    this.parserFormats = parserFormats ??
+        [
+          // Use 'yy' so DateFormat.parse() will use "ambiguous" year parsing - e.g., "22" = "2022".
+          DateFormat(DateFormat.yMd().pattern!.replaceFirst('y', 'yy'))
+              .add_jm(),
+        ];
+  }
 
   @override
   State<VscDatetimeField> createState() => _VscDatetimeFieldState();
 }
 
 class _VscDatetimeFieldState extends State<VscDatetimeField> {
+  static final _dateFmt = DateFormat.yMd();
+  static final _dateTimeFmt = _dateFmt.add_jm();
+
   late final FocusNode _focusNode = FocusNode();
   late final TextEditingController _textEditingController =
       TextEditingController();
@@ -102,12 +117,14 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
   final _textFieldGlobalKey = GlobalKey();
 
   DateTime? _value;
+  String? _internalErrorText;
 
   @override
   void initState() {
     super.initState();
 
-    _setValue(widget.initialValue);
+    print('Default format = ${DateFormat.yMd().pattern}');
+    _setValue(widget.initialValue, setText: true);
     _pickerBox =
         _PickerBox(context, widget.direction, widget.autoFlipDirection);
 
@@ -115,6 +132,8 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
       if (_effectiveFocusNode.hasFocus) {
         _pickerBox.open();
       } else {
+        // Reformat text from value
+        _setValue(_value, setText: true);
         _pickerBox.close();
       }
     };
@@ -158,21 +177,24 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
         child: CalendarDatePicker(
           initialDate: _value ?? DateTime.now(),
           // TODO pass these values in
-          firstDate: DateTime.parse('1000-01-01'),
+          firstDate: DateTime.parse('0001-01-01'),
           lastDate: DateTime.parse('3000-01-01'),
           onDateChanged: (DateTime newValue) {
             // Modify the field's DateTime, sans the time component.
             final currValue = _value ?? DateTime.now();
-            _setValue(DateTime(
-              newValue.year,
-              newValue.month,
-              newValue.day,
-              currValue.hour,
-              currValue.minute,
-              currValue.second,
-              currValue.millisecond,
-              currValue.microsecond,
-            ));
+            _setValue(
+              DateTime(
+                newValue.year,
+                newValue.month,
+                newValue.day,
+                currValue.hour,
+                currValue.minute,
+                currValue.second,
+                currValue.millisecond,
+                currValue.microsecond,
+              ),
+              setText: true,
+            );
           },
         ),
       );
@@ -210,7 +232,7 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
   @override
   Widget build(BuildContext context) {
     return Focus(
-      // Focus is used to intercept Esc key events without taking focus.
+      // Focus is used here to intercept Esc key events without taking focus.
       canRequestFocus: false,
       onKey: (node, event) {
         if (event.logicalKey == LogicalKeyboardKey.escape) {
@@ -227,27 +249,27 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
           focusNode: _effectiveFocusNode,
           controller: _effectiveController,
           decoration: widget.textFieldConfiguration.decoration.copyWith(
-            suffixIcon:
-                //Icons.clear_outlined TODO - should be second icon?
-                _value == null || widget.readOnly
-                    ? InkWell(
-                        canRequestFocus: false,
-                        child: const Icon(Icons.event_outlined),
-                        onTap: widget.readOnly
-                            ? null
-                            : () {
-                                if (_pickerBox.isOpened) {
-                                  _pickerBox.close();
-                                } else {
-                                  _pickerBox.open();
-                                  _effectiveFocusNode.requestFocus();
-                                }
-                              },
-                      )
-                    : InkWell(
-                        child: const Icon(Icons.clear_outlined),
-                        onTap: () => _setValue(null),
-                      ),
+            errorText: _internalErrorText ??
+                widget.textFieldConfiguration.decoration.errorText,
+            suffixIcon: _value == null || widget.readOnly
+                ? InkWell(
+                    canRequestFocus: false,
+                    child: const Icon(Icons.event_outlined),
+                    onTap: widget.readOnly
+                        ? null
+                        : () {
+                            if (_pickerBox.isOpened) {
+                              _pickerBox.close();
+                            } else {
+                              _pickerBox.open();
+                              _effectiveFocusNode.requestFocus();
+                            }
+                          },
+                  )
+                : InkWell(
+                    child: const Icon(Icons.clear_outlined),
+                    onTap: () => _setValue(null, setText: true),
+                  ),
           ),
           style: widget.textFieldConfiguration.style,
           textAlign: widget.textFieldConfiguration.textAlign,
@@ -263,7 +285,7 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
           maxLengthEnforcement:
               widget.textFieldConfiguration.maxLengthEnforcement,
           obscureText: widget.textFieldConfiguration.obscureText,
-          onChanged: widget.textFieldConfiguration.onChanged,
+          onChanged: _onTextChanged,
           onSubmitted: widget.textFieldConfiguration.onSubmitted,
           onEditingComplete: widget.textFieldConfiguration.onEditingComplete,
           onTap: widget.textFieldConfiguration.onTap,
@@ -283,13 +305,34 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
     );
   }
 
-  void _setValue(DateTime? newValue) {
+  void _setValue(DateTime? newValue, {bool setText = false}) {
+    // TODO validate between start date and end date
+    _internalErrorText = null;
     _value = newValue;
-    _effectiveController.text =
-        _value == null ? '' : DateFormat.yMd().add_jm().format(_value!);
-    _effectiveController.selection =
-        TextSelection.collapsed(offset: _effectiveController.text.length);
+    if (setText) {
+      _effectiveController.text =
+          _value == null ? '' : _dateTimeFmt.format(_value!);
+      _effectiveController.selection =
+          TextSelection.collapsed(offset: _effectiveController.text.length);
+    }
     setState(() {});
+  }
+
+  void _onTextChanged(String textValue) {
+    _internalErrorText = null;
+    textValue = textValue.trim();
+    if (textValue.isEmpty) {
+      _setValue(null, setText: false);
+      return;
+    }
+
+    try {
+      final newValue = DateTime.parse(textValue);
+      _setValue(newValue, setText: false);
+    } catch (e) {
+      _internalErrorText = 'Invalid value';
+      setState(() {});
+    }
   }
 }
 
