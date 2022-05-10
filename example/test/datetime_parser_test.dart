@@ -32,7 +32,7 @@ main() {
     _Case(dateFmts, '5 2 22', DateTime.parse('2022-05-02T00:00:00.000')),
     _Case(dateFmts, 'May 2, 2022', DateTime.parse('2022-05-02T00:00:00.000')),
     _Case(dateFmts, 'Feb 2, 2022', DateTime.parse('2022-02-02T00:00:00.000')),
-    _Case(dateFmts, 'September 2, 2022',
+    _Case(dateFmts, 'September 2 2022',
         DateTime.parse('2022-09-02T00:00:00.000')),
     _Case(dateFmts, '5/2/2022', DateTime.parse('2022-05-02T00:00:00.000')),
     // Alternate format

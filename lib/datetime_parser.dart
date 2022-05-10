@@ -100,7 +100,7 @@ DateTime _tryParse(
     }
   }
 
-  // If we still have input left, consider it an error
+  // If we still have input left, consider it an error - at least not matching this format.
   if (inputIdx < inputParts.length) {
     throw Exception('Unexpected input ${inputParts[inputIdx]}');
   }
