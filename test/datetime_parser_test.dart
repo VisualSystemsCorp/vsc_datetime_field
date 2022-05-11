@@ -66,6 +66,10 @@ main() {
     _Case(dateFmts, '4/31/2022', DateTime.parse('2022-05-01T00:00:00.000')),
 
     // --- Datetime formats
+    _Case(dateTimeFmts, '5/2 3:46p', DateTime.parse('2023-05-02T15:46:00.000')),
+    _Case(dateTimeFmts, '5/2 15:46', DateTime.parse('2023-05-02T15:46:00.000')),
+    _Case(dateTimeFmts, '5/2 3p', DateTime.parse('2023-05-02T15:00:00.000')),
+    _Case(dateTimeFmts, '5/2/22 3', DateTime.parse('2022-05-02T03:00:00.000')),
     _Case(dateTimeFmts, '5/2/22 3:46p',
         DateTime.parse('2022-05-02T15:46:00.000')),
     _Case(dateTimeFmts, '5/2/22 3:46:34 pm',

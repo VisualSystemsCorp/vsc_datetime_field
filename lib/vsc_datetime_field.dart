@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:intl/intl.dart' hide TextDirection;
+import 'package:vsc_datetime_field/datetime_parser.dart';
 
 final _kbdSupportedPlatform = (kIsWeb || Platform.isAndroid || Platform.isIOS);
 
@@ -78,12 +79,21 @@ class VscDatetimeField extends StatefulWidget {
     this.initialValue,
     List<DateFormat>? parserFormats,
   }) : super(key: key) {
-    // TODO if (datetime)...
+    // TODO if (datetime)... Take default date formats and add time fmts, including add_jm().
+    final defaultDatetimeFmt = DateFormat.yMd().add_jm();
+    final hasAmPm = defaultDatetimeFmt.pattern?.contains('a') ?? false;
     this.parserFormats = parserFormats ??
         [
           // Use 'yy' so DateFormat.parse() will use "ambiguous" year parsing - e.g., "22" = "2022".
-          DateFormat(DateFormat.yMd().pattern!.replaceFirst('y', 'yy'))
-              .add_jm(),
+          DateFormat.yMd().addPattern('H'),
+          if (hasAmPm) DateFormat.yMd().addPattern('h a'),
+          DateFormat.yMd().addPattern('H:m'),
+          if (hasAmPm) DateFormat.yMd().addPattern('h:m a'),
+          DateFormat.yMd().addPattern('H:m:s'),
+          if (hasAmPm) DateFormat.yMd().addPattern('h:m:s a'),
+          DateFormat.yMd().addPattern('H:m:s.S'),
+          if (hasAmPm) DateFormat.yMd().addPattern('h:m:s.S a'),
+          defaultDatetimeFmt,
         ];
   }
 
@@ -327,7 +337,8 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
     }
 
     try {
-      final newValue = DateTime.parse(textValue);
+      final newValue =
+          parseDateTime(textValue, parserFormats: widget.parserFormats);
       _setValue(newValue, setText: false);
     } catch (e) {
       _internalErrorText = 'Invalid value';
