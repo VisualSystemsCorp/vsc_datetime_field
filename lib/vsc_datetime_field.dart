@@ -18,9 +18,10 @@ const int _maxDayPickerRowCount = 6; // A 31 day month that starts on Saturday.
 const double _maxDayPickerHeight =
     _dayPickerRowHeight * (_maxDayPickerRowCount + 1);
 
+final _yearSuffixRegexp = RegExp(r'[-/]y+');
+
 /*
  * TODO
- *  - Parse 12/31/22 (ambiguous year)
  *  - If we have an internal error on the field, leave the errant text on loss of focus
  *  - Slide popup down for error text.
  *  - start/end date
@@ -79,22 +80,46 @@ class VscDatetimeField extends StatefulWidget {
     this.initialValue,
     List<DateFormat>? parserFormats,
   }) : super(key: key) {
-    // TODO if (datetime)... Take default date formats and add time fmts, including add_jm().
-    final defaultDatetimeFmt = DateFormat.yMd().add_jm();
-    final hasAmPm = defaultDatetimeFmt.pattern?.contains('a') ?? false;
-    this.parserFormats = parserFormats ??
-        [
-          // Use 'yy' so DateFormat.parse() will use "ambiguous" year parsing - e.g., "22" = "2022".
-          DateFormat.yMd().addPattern('H'),
-          if (hasAmPm) DateFormat.yMd().addPattern('h a'),
-          DateFormat.yMd().addPattern('H:m'),
-          if (hasAmPm) DateFormat.yMd().addPattern('h:m a'),
-          DateFormat.yMd().addPattern('H:m:s'),
-          if (hasAmPm) DateFormat.yMd().addPattern('h:m:s a'),
-          DateFormat.yMd().addPattern('H:m:s.S'),
-          if (hasAmPm) DateFormat.yMd().addPattern('h:m:s.S a'),
-          defaultDatetimeFmt,
-        ];
+    if (parserFormats != null) {
+      this.parserFormats = parserFormats;
+    } else {
+      // TODO if (datetime)... Take default date formats and add time fmts, including add_jm().
+      final defaultDateFmt = DateFormat.yMd();
+      // Make a date format which exclude any year suffix - e.g., "M/d/y" becomes "M/d"
+      final defaultDateFmtLessYear = DateFormat(
+          defaultDateFmt.pattern?.replaceFirst(_yearSuffixRegexp, ''));
+      final dateFormats = [
+        defaultDateFmt,
+        defaultDateFmtLessYear,
+      ];
+
+      final defaultDatetimeFmt = DateFormat.yMd().add_jm();
+      final hasAmPm = defaultDatetimeFmt.pattern?.contains('a') ?? false;
+      final dateTimeFormats = <DateFormat>[];
+      dateTimeFormats.addAll(dateFormats);
+      for (final dateFmt in dateFormats) {
+        dateTimeFormats
+          ..add(DateFormat(dateFmt.pattern).addPattern('H'))
+          ..add(
+              DateFormat(DateFormat(dateFmt.pattern).pattern).addPattern('H:m'))
+          ..add(DateFormat(dateFmt.pattern).addPattern('H:m:s'))
+          ..add(DateFormat(dateFmt.pattern).addPattern('H:m:s.S'));
+        if (hasAmPm) {
+          dateTimeFormats
+            ..add(DateFormat(dateFmt.pattern).addPattern('h a'))
+            ..add(DateFormat(dateFmt.pattern).addPattern('ha'))
+            ..add(DateFormat(dateFmt.pattern).addPattern('h:m a'))
+            ..add(DateFormat(dateFmt.pattern).addPattern('h:ma'))
+            ..add(DateFormat(dateFmt.pattern).addPattern('h:m:s a'))
+            ..add(DateFormat(dateFmt.pattern).addPattern('h:m:sa'))
+            ..add(DateFormat(dateFmt.pattern).addPattern('h:m:s.S a'))
+            ..add(DateFormat(dateFmt.pattern).addPattern('h:m:s.Sa'));
+        }
+      }
+
+      dateTimeFormats.add(defaultDatetimeFmt);
+      this.parserFormats = dateTimeFormats;
+    }
   }
 
   @override
@@ -133,7 +158,6 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
   void initState() {
     super.initState();
 
-    print('Default format = ${DateFormat.yMd().pattern}');
     _setValue(widget.initialValue, setText: true);
     _pickerBox =
         _PickerBox(context, widget.direction, widget.autoFlipDirection);

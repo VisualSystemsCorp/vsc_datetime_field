@@ -3,9 +3,9 @@ import 'dart:math';
 import 'package:clock/clock.dart';
 import 'package:intl/intl.dart';
 
-final _splitPatternRegexp = RegExp(r'[\p{P}\s]+', unicode: true);
 final _quotedToken = RegExp(r"'[^']*'");
-final _punctOrSpaceRegexp = RegExp(r'[\p{P}\s]', unicode: true);
+final _punctRegexp = RegExp(r'\p{P}', unicode: true);
+final _spaceRegexp = RegExp(r'\s', unicode: true);
 final _digitRegexp = RegExp(r'\d');
 
 /// Parse a date or datetime string, based on [parseFormats], and return a
@@ -20,7 +20,7 @@ DateTime parseDateTime(
   required List<DateFormat> parserFormats,
   bool allowAmbiguousYear = true,
 }) {
-  final inputParts = _splitInput(inputString);
+  final inputParts = _split(inputString);
   if (inputParts.isEmpty) {
     throw FormatException('Invalid input: $inputString');
   }
@@ -41,38 +41,54 @@ DateTime parseDateTime(
   throw const FormatException('Could not parse');
 }
 
-/// Splits the input into digit sequences or non-punctuation sequences. A single
-/// part returned will not be a combination of digits and non-punctuation.
-/// We need this instead of split() in order to break "12:00pm" into "12" "00" "pm".
-List<String> _splitInput(String input) {
+enum _TokenType { number, punct, alpha, whitespace }
+
+/// Splits the input into a series of digit sequences, "alpha" sequences,
+/// punctuation sequences, or whitespace sequences. A single part returned will not be a combination
+/// of more than one of these categories. Whitespace is ignored.
+/// We need this instead of split() in order to break "12:00pm" into
+/// "12" "00" "pm" for example. If [isPattern] is true, then "alpha" sequences are
+/// split when a non-repeating alpha character is encountered. E.g., "mmp" is split
+/// into "mm" and "p".
+List<String> _split(String input, {bool isPattern = false}) {
+  // Ignore leading/trailing whitespace.
+  input = input.trim();
+
   final parts = <String>[];
   final builder = StringBuffer();
+
+  _TokenType? currType;
+  String lastChar = '';
+
   void emit() {
-    if (builder.isNotEmpty) {
+    if (currType != null) {
       parts.add(builder.toString());
       builder.clear();
     }
+
+    currType = null;
+    lastChar = '';
   }
 
-  bool lastCharWasDigit = false;
   for (var i = 0; i < input.length; i++) {
     final c = input[i];
-    if (_punctOrSpaceRegexp.hasMatch(c)) {
+    final newType = _digitRegexp.hasMatch(c)
+        ? _TokenType.number
+        : _punctRegexp.hasMatch(c)
+            ? _TokenType.punct
+            : _spaceRegexp.hasMatch(c)
+                ? _TokenType.whitespace
+                : _TokenType.alpha;
+    if (newType != currType ||
+        (isPattern && currType == _TokenType.alpha && c != lastChar)) {
       emit();
-    } else if (_digitRegexp.hasMatch(c)) {
-      if (!lastCharWasDigit) {
-        emit();
-      }
+    }
 
+    currType = newType;
+    lastChar = c;
+    // Whitespace will just be an empty token so any amount of whitespace will match.
+    if (currType != _TokenType.whitespace) {
       builder.write(c);
-      lastCharWasDigit = true;
-    } else {
-      if (lastCharWasDigit) {
-        emit();
-      }
-
-      builder.write(c);
-      lastCharWasDigit = false;
     }
   }
 
@@ -90,19 +106,22 @@ DateTime _tryParse(
   // Get rid of quoted text like 'T'
   pattern = pattern.replaceAll(_quotedToken, ' ');
 
-  final patternParts = pattern.split(_splitPatternRegexp);
+  final patternParts = _split(pattern, isPattern: true);
+  if (patternParts.length != inputParts.length) {
+    throw const FormatException('Pattern length does not match input length');
+  }
+
   final builder = _Builder();
   var inputIdx = 0;
   for (final patternPart in patternParts) {
-    final symbol = patternPart[0];
+    final input = inputParts[inputIdx];
+    ++inputIdx;
+    final symbol = patternPart.isNotEmpty ? patternPart[0] : '';
     final handler = _symbolHandlers[symbol];
     if (handler != null) {
-      final input = inputIdx < inputParts.length
-          ? inputParts[inputIdx]
-          : handler.defaultValue;
-      ++inputIdx;
-
       handler.setValue(builder, input);
+    } else if (patternPart != input) {
+      throw FormatException('Pattern $patternPart does not match input $input');
     }
   }
 
@@ -202,11 +221,10 @@ class _Builder {
 
 class _SymbolHandler {
   void Function(_SymbolHandler, _Builder, String) setter;
-  String defaultValue;
   late List<DateFormat> symbolFormats;
   final String symbol;
 
-  _SymbolHandler(this.symbol, this.setter, this.defaultValue) {
+  _SymbolHandler(this.symbol, this.setter) {
     symbolFormats = [
       DateFormat(symbol), // e.g., M = 12
       DateFormat('$symbol$symbol$symbol'), // e.g., MMM = Jan
@@ -237,91 +255,98 @@ class _SymbolHandler {
 final _symbolHandlers = <String, _SymbolHandler>{
   ///     y        year                   (Number)           1996
   'y': _SymbolHandler(
-      'y',
-      (handler, builder, value) => builder.year = handler.tryParse(value).year,
-      '0'),
+    'y',
+    (handler, builder, value) => builder.year = handler.tryParse(value).year,
+  ),
 
   ///     M        month in year          (Text & Number)    July & 07
   'M': _SymbolHandler(
-      'M',
-      (handler, builder, value) =>
-          builder.month = handler.tryParse(value).month,
-      '1'),
+    'M',
+    (handler, builder, value) => builder.month = handler.tryParse(value).month,
+  ),
 
   ///     L        standalone month       (Text & Number)    July & 07
   'L': _SymbolHandler(
-      'L',
-      (handler, builder, value) =>
-          builder.month = handler.tryParse(value).month,
-      '1'),
+    'L',
+    (handler, builder, value) => builder.month = handler.tryParse(value).month,
+  ),
 
   ///     d        day in month           (Number)           10
   'd': _SymbolHandler(
-      'd',
-      (handler, builder, value) => builder.day = handler.tryParse(value).day,
-      '1'),
+    'd',
+    (handler, builder, value) => builder.day = handler.tryParse(value).day,
+  ),
 
   ///     h        hour in am/pm (1~12)   (Number)           12
   'h': _SymbolHandler(
-      'h',
-      (handler, builder, value) => builder.hour = handler.tryParse(value).hour,
-      // "12" is parsed as zero by 'h' DateFormat
-      '12'),
+    'h',
+    (handler, builder, value) => builder.hour = handler.tryParse(value).hour,
+    // "12" is parsed as zero by 'h' DateFormat
+  ),
 
   ///     H        hour in day (0~23)     (Number)           0
-  'H': _SymbolHandler('H', (handler, builder, value) {
-    builder.hour = handler.tryParse(value).hour;
-    builder.patternIs24hr = true;
-  }, '0'),
+  'H': _SymbolHandler(
+    'H',
+    (handler, builder, value) {
+      builder.hour = handler.tryParse(value).hour;
+      builder.patternIs24hr = true;
+    },
+  ),
 
   ///     k        hour in day (1~24)     (Number)           24
-  'k': _SymbolHandler('k', (handler, builder, value) {
-    builder.hour = handler.tryParse(value).hour;
-    builder.patternIs24hr = true;
-  }, '1'),
+  'k': _SymbolHandler(
+    'k',
+    (handler, builder, value) {
+      builder.hour = handler.tryParse(value).hour;
+      builder.patternIs24hr = true;
+    },
+  ),
 
   ///     K        hour in am/pm (0~11)   (Number)           0
   'K': _SymbolHandler(
-      'K',
-      (handler, builder, value) => builder.hour = handler.tryParse(value).hour,
-      '0'),
+    'K',
+    (handler, builder, value) => builder.hour = handler.tryParse(value).hour,
+  ),
 
   ///     m        minute in hour         (Number)           30
   'm': _SymbolHandler(
-      'm',
-      (handler, builder, value) =>
-          builder.minute = handler.tryParse(value).minute,
-      '0'),
+    'm',
+    (handler, builder, value) =>
+        builder.minute = handler.tryParse(value).minute,
+  ),
 
   ///     s        second in minute       (Number)           55
   's': _SymbolHandler(
-      's',
-      (handler, builder, value) =>
-          builder.second = handler.tryParse(value).second,
-      '0'),
+    's',
+    (handler, builder, value) =>
+        builder.second = handler.tryParse(value).second,
+  ),
 
   ///     S        fractional second      (Number)           978
   'S': _SymbolHandler(
-      'S',
-      (handler, builder, value) =>
-          builder.millisecond = handler.tryParse(value).millisecond,
-      '0'),
+    'S',
+    (handler, builder, value) =>
+        builder.millisecond = handler.tryParse(value).millisecond,
+  ),
 
   ///     a        am/pm marker           (Text)             PM
-  'a': _SymbolHandler('a', (handler, builder, value) {
-    if (value == 'notset') return;
+  'a': _SymbolHandler(
+    'a',
+    (handler, builder, value) {
+      if (value == 'notset') return;
 
-    value = value.toUpperCase();
-    final idx = handler.symbolFormats[0].dateSymbols.AMPMS.indexWhere(
-        (symbol) =>
-            symbol
-                .substring(0, min(symbol.length, value.length))
-                .toUpperCase() ==
-            value);
-    if (idx < 0) {
-      throw Exception('Invalid AM/PM indicator: $value');
-    }
+      value = value.toUpperCase();
+      final idx = handler.symbolFormats[0].dateSymbols.AMPMS.indexWhere(
+          (symbol) =>
+              symbol
+                  .substring(0, min(symbol.length, value.length))
+                  .toUpperCase() ==
+              value);
+      if (idx < 0) {
+        throw Exception('Invalid AM/PM indicator: $value');
+      }
 
-    builder.am = idx == 0;
-  }, 'notset'),
+      builder.am = idx == 0;
+    },
+  ),
 };
