@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:clock/clock.dart';
 import 'package:intl/intl.dart';
 
 final _splitPatternRegexp = RegExp(r'[\p{P}\s]+', unicode: true);
@@ -9,13 +10,27 @@ final _digitRegexp = RegExp(r'\d');
 
 /// Parse a date or datetime string, based on [parseFormats], and return a
 /// DateTime. Each [parseFormat] is attempted in order until [inputString] is successfully
-/// parsed. A [FormatException] is thrown if [inputString] cannot be parsed.
-DateTime parseDateTime(String inputString,
-    {bool utc = false, required List<DateFormat> parserFormats}) {
+/// parsed. If [allowAmbiguousYear] is true (the default), a two-digit year can be
+/// supplied that is exactly 20 years in the future or exactly 80 years in the past -
+/// e.g., "22" for "2022".
+/// A [FormatException] is thrown if [inputString] cannot be parsed.
+DateTime parseDateTime(
+  String inputString, {
+  bool utc = false,
+  required List<DateFormat> parserFormats,
+  bool allowAmbiguousYear = true,
+}) {
   final inputParts = _splitInput(inputString);
+  if (inputParts.isEmpty) {
+    throw FormatException('Invalid input: $inputString');
+  }
+
   for (final parserFormat in parserFormats) {
     try {
-      return _tryParse(inputParts, utc: utc, parserFormat: parserFormat);
+      return _tryParse(inputParts,
+          utc: utc,
+          parserFormat: parserFormat,
+          allowAmbiguousYear: allowAmbiguousYear);
     } catch (e) {
       if (identical(parserFormat, parserFormats.last)) {
         rethrow;
@@ -91,21 +106,28 @@ DateTime _tryParse(
     }
   }
 
+  // If we still have input left, consider it an error - at least not matching this format.
+  if (inputIdx < inputParts.length) {
+    throw FormatException('Unexpected input ${inputParts[inputIdx]}');
+  }
+
+  // Default am/pm to am if this is a 12h format.
+  if (!builder.patternIs24hr && builder.am == null) {
+    builder.am = true;
+  }
+
   // Fix-up hour if am/pm was specified.
   if (builder.hour != null && builder.am != null) {
-    // Hour is 0..11 in this case (we subtract 1 from the input value)
-    builder.hour = builder.hour! + 1;
-    if (!builder.am! && builder.hour! < 13) {
+    // Hour should be 0..11 if this is really a 12h hour. During conversion of 'h',
+    // we subtracted 1 from the hour. However, keep in mind that the user could have
+    // supplied a 24h hour without an am/pm indicator, so if the hour > 12, we want to preserve
+    // the hour as-is.
+    if (!builder.am! && builder.hour! < 12) {
       builder.hour = builder.hour! + 12;
     }
   }
 
-  // If we still have input left, consider it an error - at least not matching this format.
-  if (inputIdx < inputParts.length) {
-    throw Exception('Unexpected input ${inputParts[inputIdx]}');
-  }
-
-  var now = DateTime.now();
+  var now = clock.now();
   if (utc) {
     now = now.toUtc();
   }
@@ -115,6 +137,7 @@ DateTime _tryParse(
       allowAmbiguousYear &&
       builder.year! >= 10 &&
       builder.year! <= 99) {
+    // Basic algorithm from package:intl/lib/src/intl/date_builder.dart.
     const lookBehindYears = 80;
     final lowerYear = now.year - lookBehindYears;
     final upperYear = now.year + (100 - lookBehindYears);
@@ -149,8 +172,8 @@ DateTime _tryParse(
 
   final result = DateTime(
       builder.year ?? now.year,
-      builder.month ?? 1,
-      builder.day ?? 1,
+      builder.month ?? now.month,
+      builder.day ?? now.day,
       builder.hour ?? 0,
       builder.minute ?? 0,
       builder.second ?? 0,
@@ -185,7 +208,7 @@ class _SymbolHandler {
 
   _SymbolHandler(this.symbol, this.setter, this.defaultValue) {
     symbolFormats = [
-      DateFormat(symbol),
+      DateFormat(symbol), // e.g., M = 12
       DateFormat('$symbol$symbol$symbol'), // e.g., MMM = Jan
       DateFormat('$symbol$symbol$symbol$symbol'), // e.g., MMMM = January
       DateFormat('$symbol$symbol$symbol$symbol$symbol'), // e.g., MMMMM = J
@@ -193,6 +216,7 @@ class _SymbolHandler {
   }
 
   DateTime tryParse(String value) {
+    assert(symbolFormats.isNotEmpty);
     for (final symbolFormat in symbolFormats) {
       try {
         return symbolFormat.parseLoose(value);
@@ -203,6 +227,7 @@ class _SymbolHandler {
       }
     }
 
+    // We should never get here unless symbolFormats is empty, which is filled with 4 in the constructor.
     throw Exception('Could not parse $value as $symbol');
   }
 
@@ -236,18 +261,12 @@ final _symbolHandlers = <String, _SymbolHandler>{
       (handler, builder, value) => builder.day = handler.tryParse(value).day,
       '1'),
 
-  ///     c        standalone day         (Number)           10
-  'c': _SymbolHandler(
-      'c',
-      (handler, builder, value) => builder.day = handler.tryParse(value).day,
-      '1'),
-
   ///     h        hour in am/pm (1~12)   (Number)           12
   'h': _SymbolHandler(
       'h',
-      (handler, builder, value) =>
-          builder.hour = handler.tryParse(value).hour - 1,
-      '1'),
+      (handler, builder, value) => builder.hour = handler.tryParse(value).hour,
+      // "12" is parsed as zero by 'h' DateFormat
+      '12'),
 
   ///     H        hour in day (0~23)     (Number)           0
   'H': _SymbolHandler('H', (handler, builder, value) {
@@ -257,7 +276,7 @@ final _symbolHandlers = <String, _SymbolHandler>{
 
   ///     k        hour in day (1~24)     (Number)           24
   'k': _SymbolHandler('k', (handler, builder, value) {
-    builder.hour = handler.tryParse(value).hour - 1;
+    builder.hour = handler.tryParse(value).hour;
     builder.patternIs24hr = true;
   }, '1'),
 
@@ -290,6 +309,8 @@ final _symbolHandlers = <String, _SymbolHandler>{
 
   ///     a        am/pm marker           (Text)             PM
   'a': _SymbolHandler('a', (handler, builder, value) {
+    if (value == 'notset') return;
+
     value = value.toUpperCase();
     final idx = handler.symbolFormats[0].dateSymbols.AMPMS.indexWhere(
         (symbol) =>
@@ -297,8 +318,10 @@ final _symbolHandlers = <String, _SymbolHandler>{
                 .substring(0, min(symbol.length, value.length))
                 .toUpperCase() ==
             value);
-    if (idx >= 0) {
-      builder.am = idx == 0;
+    if (idx < 0) {
+      throw Exception('Invalid AM/PM indicator: $value');
     }
+
+    builder.am = idx == 0;
   }, 'notset'),
 };

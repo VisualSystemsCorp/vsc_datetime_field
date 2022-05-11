@@ -27,4 +27,4 @@
 .dart_tool/
 .packages
 build/
-/example/coverage/
+**/coverage/
