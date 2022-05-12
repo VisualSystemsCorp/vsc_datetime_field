@@ -20,18 +20,19 @@ const double _maxDayPickerHeight =
 
 final _yearSuffixRegexp = RegExp(r'[-/]y+');
 
+enum VscDatetimeFieldType { date, datetime, time }
 /*
  * TODO
- *  - If we have an internal error on the field, leave the errant text on loss of focus
- *  - Slide popup down for error text.
+ *  - date vs datetime vs time mode
  *  - start/end date
- *  - date vs datetime mode
  *  - Sometimes there's just not enough room with the kbd open on mobile. Don't show any picker in this case.
- *    But if the kbd closes, recalculate
- *  - Separate time field.
+ *    But if the mobile kbd closes, recalculate available size
  */
 
 class VscDatetimeField extends StatefulWidget {
+  /// Type of field desired.
+  final VscDatetimeFieldType type;
+
   /// Determine the [PickerBox]'s direction.
   ///
   /// If [AxisDirection.down], the [PickerBox] will be below the [TextField]
@@ -71,6 +72,7 @@ class VscDatetimeField extends StatefulWidget {
 
   VscDatetimeField({
     Key? key,
+    this.type = VscDatetimeFieldType.date,
     this.pickerVerticalOffset = 5.0,
     this.direction = AxisDirection.down,
     this.textFieldConfiguration = const TextFieldConfiguration(),
@@ -83,42 +85,57 @@ class VscDatetimeField extends StatefulWidget {
     if (parserFormats != null) {
       this.parserFormats = parserFormats;
     } else {
-      // TODO if (datetime)... Take default date formats and add time fmts, including add_jm().
-      final defaultDateFmt = DateFormat.yMd();
-      // Make a date format which exclude any year suffix - e.g., "M/d/y" becomes "M/d"
-      final defaultDateFmtLessYear = DateFormat(
-          defaultDateFmt.pattern?.replaceFirst(_yearSuffixRegexp, ''));
-      final dateFormats = [
-        defaultDateFmt,
-        defaultDateFmtLessYear,
-      ];
+      if (type == VscDatetimeFieldType.date ||
+          type == VscDatetimeFieldType.datetime) {
+        final defaultDateFmt = DateFormat.yMd();
+        // Make a date format which exclude any year suffix - e.g., "M/d/y" becomes "M/d"
+        final defaultDateFmtLessYear = DateFormat(
+            defaultDateFmt.pattern?.replaceFirst(_yearSuffixRegexp, ''));
+        final dateFormats = [
+          defaultDateFmt,
+          defaultDateFmtLessYear,
+          // Date format separating month/day with space, e.g., "M/d" -> "M d", which allows for "Mar 3"
+          DateFormat(defaultDateFmtLessYear.pattern?.replaceFirst('/', ' ')),
+          // Date format separating month/day with space and [space] year with comma, e.g., "M/d/y" -> "M d, y", which allows for "Mar 3, 2022"
+          DateFormat(defaultDateFmt.pattern
+              ?.replaceFirst('/', ' ')
+              .replaceFirst('/', ', ')),
+          DateFormat(defaultDateFmt.pattern
+              ?.replaceFirst('/', ' ')
+              .replaceFirst('/', ',')),
+        ];
 
-      final defaultDatetimeFmt = DateFormat.yMd().add_jm();
-      final hasAmPm = defaultDatetimeFmt.pattern?.contains('a') ?? false;
-      final dateTimeFormats = <DateFormat>[];
-      dateTimeFormats.addAll(dateFormats);
-      for (final dateFmt in dateFormats) {
-        dateTimeFormats
-          ..add(DateFormat(dateFmt.pattern).addPattern('H'))
-          ..add(
-              DateFormat(DateFormat(dateFmt.pattern).pattern).addPattern('H:m'))
-          ..add(DateFormat(dateFmt.pattern).addPattern('H:m:s'))
-          ..add(DateFormat(dateFmt.pattern).addPattern('H:m:s.S'));
-        if (hasAmPm) {
-          dateTimeFormats
-            ..add(DateFormat(dateFmt.pattern).addPattern('h a'))
-            ..add(DateFormat(dateFmt.pattern).addPattern('ha'))
-            ..add(DateFormat(dateFmt.pattern).addPattern('h:m a'))
-            ..add(DateFormat(dateFmt.pattern).addPattern('h:ma'))
-            ..add(DateFormat(dateFmt.pattern).addPattern('h:m:s a'))
-            ..add(DateFormat(dateFmt.pattern).addPattern('h:m:sa'))
-            ..add(DateFormat(dateFmt.pattern).addPattern('h:m:s.S a'))
-            ..add(DateFormat(dateFmt.pattern).addPattern('h:m:s.Sa'));
+        this.parserFormats = dateFormats;
+
+        if (type == VscDatetimeFieldType.datetime) {
+          final defaultDatetimeFmt = DateFormat.yMd().add_jm();
+          final hasAmPm = defaultDatetimeFmt.pattern?.contains('a') ?? false;
+          final dateTimeFormats = <DateFormat>[];
+          dateTimeFormats.addAll(dateFormats);
+          for (final dateFmt in dateFormats) {
+            dateTimeFormats
+              ..add(DateFormat(dateFmt.pattern).addPattern('H'))
+              ..add(DateFormat(DateFormat(dateFmt.pattern).pattern)
+                  .addPattern('H:m'))
+              ..add(DateFormat(dateFmt.pattern).addPattern('H:m:s'))
+              ..add(DateFormat(dateFmt.pattern).addPattern('H:m:s.S'));
+            if (hasAmPm) {
+              dateTimeFormats
+                ..add(DateFormat(dateFmt.pattern).addPattern('h a'))
+                ..add(DateFormat(dateFmt.pattern).addPattern('ha'))
+                ..add(DateFormat(dateFmt.pattern).addPattern('h:m a'))
+                ..add(DateFormat(dateFmt.pattern).addPattern('h:ma'))
+                ..add(DateFormat(dateFmt.pattern).addPattern('h:m:s a'))
+                ..add(DateFormat(dateFmt.pattern).addPattern('h:m:sa'))
+                ..add(DateFormat(dateFmt.pattern).addPattern('h:m:s.S a'))
+                ..add(DateFormat(dateFmt.pattern).addPattern('h:m:s.Sa'));
+            }
+          }
+
+          dateTimeFormats.add(defaultDatetimeFmt);
+          this.parserFormats = dateTimeFormats;
         }
       }
-
-      dateTimeFormats.add(defaultDatetimeFmt);
-      this.parserFormats = dateTimeFormats;
     }
   }
 
@@ -166,21 +183,23 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
       if (_effectiveFocusNode.hasFocus) {
         _pickerBox.open();
       } else {
-        // Reformat text from value
-        _setValue(_value, setText: true);
+        // Reformat text from value, only if no error.
+        if (_internalErrorText == null) {
+          _setValue(_value, setText: true);
+        }
+
         _pickerBox.close();
       }
     };
 
     _effectiveFocusNode.addListener(_focusNodeListener);
 
+    // TODO I don't want this. Is there any reason for _keyboardVisibility?
     // hide Picker Box on keyboard closed
     _keyboardVisibilitySubscription =
-        _keyboardVisibility?.listen((bool isVisible) {
-      // TODO I don't want this. Is there any reason for _keyboardVisibility?
-    });
+        _keyboardVisibility?.listen((bool isVisible) {});
 
-    WidgetsBinding.instance!.addPostFrameCallback((duration) {
+    WidgetsBinding.instance.addPostFrameCallback((duration) {
       if (mounted) {
         _initOverlayEntry();
         // calculate initial picker box size
@@ -265,6 +284,15 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
 
   @override
   Widget build(BuildContext context) {
+    // Make sure the pickerBox position is reset in case an error message shows up
+    // below the field, or if it goes away. This must be done after the size of
+    // this widget is known.
+    if (_pickerBox.isOpened) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _pickerBox.resize();
+      });
+    }
+
     return Focus(
       // Focus is used here to intercept Esc key events without taking focus.
       canRequestFocus: false,

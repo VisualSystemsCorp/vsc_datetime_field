@@ -51,31 +51,34 @@ class _MyHomePageState extends State<MyHomePage> {
                     onPressed: () {}, child: const Text('Focus test')),
                 const SizedBox(height: 30),
                 VscDatetimeField(
+                  type: VscDatetimeFieldType.date,
                   textFieldConfiguration: const TextFieldConfiguration(
                       decoration: InputDecoration(
-                    label: Text('Date 1'),
+                    label: Text('Date only'),
                   )),
                   onDatetimeSelected: (value) {},
                 ),
                 const SizedBox(height: 30),
                 VscDatetimeField(
+                  type: VscDatetimeFieldType.date,
                   textFieldConfiguration: const TextFieldConfiguration(
                       decoration: InputDecoration(
-                    label: Text('Date 2'),
+                    label: Text('Datetime'),
                   )),
                   onDatetimeSelected: (value) {},
                 ),
                 const SizedBox(height: 30),
                 VscDatetimeField(
+                  type: VscDatetimeFieldType.time,
                   textFieldConfiguration: const TextFieldConfiguration(
                       decoration: InputDecoration(
-                    label: Text('Date with Error'),
-                    errorText: 'Test error',
+                    label: Text('Time only'),
                   )),
                   onDatetimeSelected: (value) {},
                 ),
                 const SizedBox(height: 30),
                 VscDatetimeField(
+                  type: VscDatetimeFieldType.date,
                   textFieldConfiguration: const TextFieldConfiguration(
                       decoration: InputDecoration(
                     label: Text('Date - Read-only'),
