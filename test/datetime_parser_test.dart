@@ -1,7 +1,4 @@
-import 'dart:io';
-
 import 'package:clock/clock.dart';
-import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 import 'package:vsc_datetime_field/datetime_parser.dart';
@@ -66,68 +63,68 @@ main() {
   Intl.defaultLocale = 'en-US';
 
   for (final t in [
-    // // --- Date only formats
-    // _Case(dateFmts, '05/02/2022', DateTime.parse('2022-05-02T00:00:00.000')),
-    // // Ambiguous years:
-    // _Case(dateFmts, '5/2/22', DateTime.parse('2022-05-02T00:00:00.000')),
-    // _Case(dateFmts, '5/2/62', DateTime.parse('1962-05-02T00:00:00.000')),
-    // // Missing year
-    // _Case(dateFmts, '5/2', DateTime.parse('$currentYear-05-02T00:00:00.000')),
-    // // Deviant formatting
-    // _Case(dateFmts, '05/02/22', DateTime.parse('2022-05-02T00:00:00.000')),
-    // _Case(dateFmts, '5 2 22', DateTime.parse('2022-05-02T00:00:00.000')),
-    // _Case(dateFmts, '5.2.22', DateTime.parse('2022-05-02T00:00:00.000')),
-    // _Case(dateFmts, 'May 2, 2022', DateTime.parse('2022-05-02T00:00:00.000')),
-    // _Case(dateFmts, 'Feb 2, 2022', DateTime.parse('2022-02-02T00:00:00.000')),
-    // _Case(dateFmts, 'September 2 2022',
-    //     DateTime.parse('2022-09-02T00:00:00.000')),
-    // _Case(dateFmts, 'september 2 2022',
-    //     DateTime.parse('2022-09-02T00:00:00.000')),
-    // _Case(dateFmts, 'FEB 2, 2022', DateTime.parse('2022-02-02T00:00:00.000')),
-    // _Case(dateFmts, '5/2/2022', DateTime.parse('2022-05-02T00:00:00.000')),
-    // // Alternate format
-    // _Case(dateFmts, '2022-05-10', DateTime.parse('2022-05-10T00:00:00.000')),
-    // // Day overflows month, which goes into the next month. This is the DateTime behavior.
-    // _Case(dateFmts, '2/30/2022', DateTime.parse('2022-03-02T00:00:00.000')),
-    // _Case(dateFmts, '4/31/2022', DateTime.parse('2022-05-01T00:00:00.000')),
-    //
-    // // --- Datetime formats
-    // _Case(dateTimeFmts, '5/2 3:46p', DateTime.parse('2023-05-02T15:46:00.000')),
-    // _Case(dateTimeFmts, '5/2 15:46', DateTime.parse('2023-05-02T15:46:00.000')),
-    // _Case(dateTimeFmts, '5/2 3p', DateTime.parse('2023-05-02T15:00:00.000')),
-    // _Case(dateTimeFmts, '5/2/22 3', DateTime.parse('2022-05-02T03:00:00.000')),
-    // _Case(dateTimeFmts, '5/2/22 3:46p',
-    //     DateTime.parse('2022-05-02T15:46:00.000')),
-    // _Case(dateTimeFmts, '5/2/22 3:46:34 pm',
-    //     DateTime.parse('2022-05-02T15:46:34.000')),
-    // _Case(dateTimeFmts, '5/2/22 3:46 pM',
-    //     DateTime.parse('2022-05-02T15:46:00.000')),
-    // _Case(dateTimeFmts, '5/2/22 3:46a',
-    //     DateTime.parse('2022-05-02T03:46:00.000')),
-    // _Case(dateTimeFmts, '5/2/22 3:46 AM',
-    //     DateTime.parse('2022-05-02T03:46:00.000')),
-    // _Case(
-    //     dateTimeFmts, '5/2/22 3:46', DateTime.parse('2022-05-02T03:46:00.000')),
-    // _Case(dateTimeFmts, '5/2/22 15:46',
-    //     DateTime.parse('2022-05-02T15:46:00.000')),
-    // _Case(dateTimeFmts, '5/2/22 15:46:34',
-    //     DateTime.parse('2022-05-02T15:46:34.000')),
-    // _Case(dateTimeFmts, '9/13/22', DateTime.parse('2022-09-13T00:00:00.000')),
-    // _Case(dateTimeFmts, '12/31/22 1am',
-    //     DateTime.parse('2022-12-31T01:00:00.000')),
-    // _Case(dateTimeFmts, '12/31/22 1pm',
-    //     DateTime.parse('2022-12-31T13:00:00.000')),
-    // _Case(dateTimeFmts, '12/31/22 12 am',
-    //     DateTime.parse('2022-12-31T00:00:00.000')),
-    // _Case(dateTimeFmts, '12/31/22 12 pm',
-    //     DateTime.parse('2022-12-31T12:00:00.000')),
-    // _Case(dateTimeFmts, '12/31/22 13:00',
-    //     DateTime.parse('2022-12-31T13:00:00.000')),
-    // _Case(dateTimeFmts, '12/31/22 01:00',
-    //     DateTime.parse('2022-12-31T01:00:00.000')),
-    // // Extra whitespace
-    // _Case(dateTimeFmts, '12/31/22    01:00',
-    //     DateTime.parse('2022-12-31T01:00:00.000')),
+    // --- Date only formats
+    _Case(dateFmts, '05/02/2022', DateTime.parse('2022-05-02T00:00:00.000')),
+    // Ambiguous years:
+    _Case(dateFmts, '5/2/22', DateTime.parse('2022-05-02T00:00:00.000')),
+    _Case(dateFmts, '5/2/62', DateTime.parse('1962-05-02T00:00:00.000')),
+    // Missing year
+    _Case(dateFmts, '5/2', DateTime.parse('$currentYear-05-02T00:00:00.000')),
+    // Deviant formatting
+    _Case(dateFmts, '05/02/22', DateTime.parse('2022-05-02T00:00:00.000')),
+    _Case(dateFmts, '5 2 22', DateTime.parse('2022-05-02T00:00:00.000')),
+    _Case(dateFmts, '5.2.22', DateTime.parse('2022-05-02T00:00:00.000')),
+    _Case(dateFmts, 'May 2, 2022', DateTime.parse('2022-05-02T00:00:00.000')),
+    _Case(dateFmts, 'Feb 2, 2022', DateTime.parse('2022-02-02T00:00:00.000')),
+    _Case(dateFmts, 'September 2 2022',
+        DateTime.parse('2022-09-02T00:00:00.000')),
+    _Case(dateFmts, 'september 2 2022',
+        DateTime.parse('2022-09-02T00:00:00.000')),
+    _Case(dateFmts, 'FEB 2, 2022', DateTime.parse('2022-02-02T00:00:00.000')),
+    _Case(dateFmts, '5/2/2022', DateTime.parse('2022-05-02T00:00:00.000')),
+    // Alternate format
+    _Case(dateFmts, '2022-05-10', DateTime.parse('2022-05-10T00:00:00.000')),
+    // Day overflows month, which goes into the next month. This is the DateTime behavior.
+    _Case(dateFmts, '2/30/2022', DateTime.parse('2022-03-02T00:00:00.000')),
+    _Case(dateFmts, '4/31/2022', DateTime.parse('2022-05-01T00:00:00.000')),
+
+    // --- Datetime formats
+    _Case(dateTimeFmts, '5/2 3:46p', DateTime.parse('2023-05-02T15:46:00.000')),
+    _Case(dateTimeFmts, '5/2 15:46', DateTime.parse('2023-05-02T15:46:00.000')),
+    _Case(dateTimeFmts, '5/2 3p', DateTime.parse('2023-05-02T15:00:00.000')),
+    _Case(dateTimeFmts, '5/2/22 3', DateTime.parse('2022-05-02T03:00:00.000')),
+    _Case(dateTimeFmts, '5/2/22 3:46p',
+        DateTime.parse('2022-05-02T15:46:00.000')),
+    _Case(dateTimeFmts, '5/2/22 3:46:34 pm',
+        DateTime.parse('2022-05-02T15:46:34.000')),
+    _Case(dateTimeFmts, '5/2/22 3:46 pM',
+        DateTime.parse('2022-05-02T15:46:00.000')),
+    _Case(dateTimeFmts, '5/2/22 3:46a',
+        DateTime.parse('2022-05-02T03:46:00.000')),
+    _Case(dateTimeFmts, '5/2/22 3:46 AM',
+        DateTime.parse('2022-05-02T03:46:00.000')),
+    _Case(
+        dateTimeFmts, '5/2/22 3:46', DateTime.parse('2022-05-02T03:46:00.000')),
+    _Case(dateTimeFmts, '5/2/22 15:46',
+        DateTime.parse('2022-05-02T15:46:00.000')),
+    _Case(dateTimeFmts, '5/2/22 15:46:34',
+        DateTime.parse('2022-05-02T15:46:34.000')),
+    _Case(dateTimeFmts, '9/13/22', DateTime.parse('2022-09-13T00:00:00.000')),
+    _Case(dateTimeFmts, '12/31/22 1am',
+        DateTime.parse('2022-12-31T01:00:00.000')),
+    _Case(dateTimeFmts, '12/31/22 1pm',
+        DateTime.parse('2022-12-31T13:00:00.000')),
+    _Case(dateTimeFmts, '12/31/22 12 am',
+        DateTime.parse('2022-12-31T00:00:00.000')),
+    _Case(dateTimeFmts, '12/31/22 12 pm',
+        DateTime.parse('2022-12-31T12:00:00.000')),
+    _Case(dateTimeFmts, '12/31/22 13:00',
+        DateTime.parse('2022-12-31T13:00:00.000')),
+    _Case(dateTimeFmts, '12/31/22 01:00',
+        DateTime.parse('2022-12-31T01:00:00.000')),
+    // Extra whitespace
+    _Case(dateTimeFmts, '12/31/22    01:00',
+        DateTime.parse('2022-12-31T01:00:00.000')),
     // Fractional seconds and extra whitespace
     _Case(dateTimeFmts, '  1/2/22 12:34:56.789  ',
         DateTime.parse('2022-01-02T12:34:56.789')),
