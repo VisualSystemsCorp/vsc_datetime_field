@@ -72,6 +72,8 @@ main() {
     _Case(dateFmts, '5/2', DateTime.parse('$currentYear-05-02T00:00:00.000')),
     // Deviant formatting
     _Case(dateFmts, '05/02/22', DateTime.parse('2022-05-02T00:00:00.000')),
+    _Case(dateFmts, '05/02/00', DateTime.parse('2000-05-02T00:00:00.000')),
+    _Case(dateFmts, '05/02/01', DateTime.parse('2001-05-02T00:00:00.000')),
     _Case(dateFmts, '5 2 22', DateTime.parse('2022-05-02T00:00:00.000')),
     _Case(dateFmts, '5.2.22', DateTime.parse('2022-05-02T00:00:00.000')),
     _Case(dateFmts, 'May 2, 2022', DateTime.parse('2022-05-02T00:00:00.000')),

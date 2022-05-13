@@ -154,7 +154,7 @@ DateTime _tryParse(
   // Fix up two-digit years if allowAmbiguousYear is true
   if (builder.year != null &&
       allowAmbiguousYear &&
-      builder.year! >= 10 &&
+      builder.year! >= 0 &&
       builder.year! <= 99) {
     // Basic algorithm from package:intl/lib/src/intl/date_builder.dart.
     const lookBehindYears = 80;
