@@ -115,6 +115,10 @@ class VscDatetimeField extends StatefulWidget {
     // Make sure date or time components are truncated so validation is reliable.
     this.minValue = _truncateBasedOnType(minValue);
     this.maxValue = _truncateBasedOnType(maxValue);
+    assert(this.minValue == null ||
+        this.maxValue == null ||
+        this.minValue!.isBefore(this.maxValue!) ||
+        this.minValue! == this.maxValue!);
 
     if (textFormat != null) {
       this.textFormat = textFormat;
@@ -308,9 +312,17 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
     }
 
     _pickerBox._overlayEntry = OverlayEntry(builder: (context) {
+      var initialDate = _value ?? DateTime.now();
+      if (widget.minValue != null && initialDate.isBefore(widget.minValue!)) {
+        initialDate = widget.minValue!;
+      }
+      if (widget.maxValue != null && initialDate.isAfter(widget.maxValue!)) {
+        initialDate = widget.maxValue!;
+      }
+
       final picker = Card(
         child: CalendarDatePicker(
-          initialDate: _value ?? DateTime.now(),
+          initialDate: initialDate,
           firstDate: widget.minValue ?? DateTime.parse('1900-01-01'),
           lastDate: widget.maxValue ?? DateTime.parse('3000-01-01'),
           onDateChanged: (DateTime newValue) {
