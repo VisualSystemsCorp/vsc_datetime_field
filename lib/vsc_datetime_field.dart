@@ -387,6 +387,7 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
 
     return Focus(
       // Focus is used here to intercept Esc key events without taking focus.
+      // TODO Could use CallbackShortcuts
       canRequestFocus: false,
       onKey: (node, event) {
         if (event.logicalKey == LogicalKeyboardKey.escape) {
@@ -408,7 +409,9 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
             suffixIcon: _value == null || widget.readOnly
                 ? InkWell(
                     canRequestFocus: false,
-                    child: const Icon(Icons.event_outlined),
+                    child: Icon(widget.type == VscDatetimeFieldType.time
+                        ? Icons.access_time_outlined
+                        : Icons.event_outlined),
                     onTap: widget.readOnly
                         ? null
                         : () {
