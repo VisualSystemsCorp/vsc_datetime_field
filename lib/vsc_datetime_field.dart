@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:io';
-import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -17,16 +16,38 @@ const int _maxDayPickerRowCount = 6; // A 31 day month that starts on Saturday.
 // One extra row for the day-of-week header.
 const double _maxDayPickerHeight =
     _dayPickerRowHeight * (_maxDayPickerRowCount + 1);
+// Value is from flutter/lib/src/material/date_picker.dart:
+const _pickerWidth = 330.0;
 
 final _yearSuffixRegexp = RegExp(r'[-/]y+');
+
+const _timePatterns24h = [
+  'H',
+  'H:m',
+  'H:m:s',
+  'H:m:s.S',
+];
+
+const _timePatternsAmPm = [
+  'h a',
+  'ha',
+  'h:m a',
+  'h:ma',
+  'h:m:s a',
+  'h:m:sa',
+  'h:m:s.S a',
+  'h:m:s.Sa',
+];
 
 enum VscDatetimeFieldType { date, datetime, time }
 /*
  * TODO
- *  - date vs datetime vs time mode
- *  - start/end date
  *  - Sometimes there's just not enough room with the kbd open on mobile. Don't show any picker in this case.
  *    But if the mobile kbd closes, recalculate available size
+ *  - Sometimes on mobile the screen doesn't scroll with the kbd up, even though the example has a scroll widget,
+ *    it doesn't have enough height to perform scrolling.
+ *  - Maybe on mobile if there is not enough height, don't show the picker but if the calendar icon is tapped,
+ *    show the dialog instead.
  */
 
 class VscDatetimeField extends StatefulWidget {
@@ -61,14 +82,20 @@ class VscDatetimeField extends StatefulWidget {
   /// Defaults to true
   final bool autoFlipDirection;
 
-  final void Function(DateTime value) onDatetimeSelected;
+  final void Function(DateTime? value)? onValueChanged;
 
   final bool readOnly;
 
   final DateTime? initialValue;
 
-  /// [DateFormat]s to be used in parsing user-entered dates or datetimes, in order of precedence.
+  /// [DateFormat]s to be used in parsing user-entered dates or date-times, in order of precedence.
   late final List<DateFormat> parserFormats;
+
+  late final DateFormat textFormat;
+
+  // Minimum and maximum value to limit input/picker.
+  late final DateTime? minValue;
+  late final DateTime? maxValue;
 
   VscDatetimeField({
     Key? key,
@@ -77,11 +104,36 @@ class VscDatetimeField extends StatefulWidget {
     this.direction = AxisDirection.down,
     this.textFieldConfiguration = const TextFieldConfiguration(),
     this.autoFlipDirection = true,
-    required this.onDatetimeSelected,
+    this.onValueChanged,
     this.readOnly = false,
     this.initialValue,
+    DateTime? minValue,
+    DateTime? maxValue,
     List<DateFormat>? parserFormats,
+    DateFormat? textFormat,
   }) : super(key: key) {
+    // Make sure date or time components are truncated so validation is reliable.
+    this.minValue = _truncateBasedOnType(minValue);
+    this.maxValue = _truncateBasedOnType(maxValue);
+
+    if (textFormat != null) {
+      this.textFormat = textFormat;
+    } else {
+      switch (type) {
+        case VscDatetimeFieldType.date:
+          this.textFormat = DateFormat.yMd();
+          break;
+
+        case VscDatetimeFieldType.datetime:
+          this.textFormat = DateFormat.yMd().add_jm();
+          break;
+
+        case VscDatetimeFieldType.time:
+          this.textFormat = DateFormat.jm();
+          break;
+      }
+    }
+
     if (parserFormats != null) {
       this.parserFormats = parserFormats;
     } else {
@@ -105,48 +157,72 @@ class VscDatetimeField extends StatefulWidget {
               .replaceFirst('/', ',')),
         ];
 
-        this.parserFormats = dateFormats;
-
         if (type == VscDatetimeFieldType.datetime) {
           final defaultDatetimeFmt = DateFormat.yMd().add_jm();
           final hasAmPm = defaultDatetimeFmt.pattern?.contains('a') ?? false;
           final dateTimeFormats = <DateFormat>[];
           dateTimeFormats.addAll(dateFormats);
           for (final dateFmt in dateFormats) {
-            dateTimeFormats
-              ..add(DateFormat(dateFmt.pattern).addPattern('H'))
-              ..add(DateFormat(DateFormat(dateFmt.pattern).pattern)
-                  .addPattern('H:m'))
-              ..add(DateFormat(dateFmt.pattern).addPattern('H:m:s'))
-              ..add(DateFormat(dateFmt.pattern).addPattern('H:m:s.S'));
-            if (hasAmPm) {
+            for (final timePattern in _timePatterns24h) {
               dateTimeFormats
-                ..add(DateFormat(dateFmt.pattern).addPattern('h a'))
-                ..add(DateFormat(dateFmt.pattern).addPattern('ha'))
-                ..add(DateFormat(dateFmt.pattern).addPattern('h:m a'))
-                ..add(DateFormat(dateFmt.pattern).addPattern('h:ma'))
-                ..add(DateFormat(dateFmt.pattern).addPattern('h:m:s a'))
-                ..add(DateFormat(dateFmt.pattern).addPattern('h:m:sa'))
-                ..add(DateFormat(dateFmt.pattern).addPattern('h:m:s.S a'))
-                ..add(DateFormat(dateFmt.pattern).addPattern('h:m:s.Sa'));
+                  .add(DateFormat(dateFmt.pattern).addPattern(timePattern));
+            }
+
+            if (hasAmPm) {
+              for (final timePattern in _timePatternsAmPm) {
+                dateTimeFormats
+                    .add(DateFormat(dateFmt.pattern).addPattern(timePattern));
+              }
             }
           }
 
           dateTimeFormats.add(defaultDatetimeFmt);
           this.parserFormats = dateTimeFormats;
+        } else {
+          // type == VscDatetimeFieldType.date
+          this.parserFormats = dateFormats;
         }
+      } else {
+        // type == VscDatetimeFieldType.time
+        final defaultTimeFmt = DateFormat.jm();
+        final hasAmPm = defaultTimeFmt.pattern?.contains('a') ?? false;
+        final timeFormats = <DateFormat>[];
+        for (final timePattern in _timePatterns24h) {
+          timeFormats.add(DateFormat(timePattern));
+        }
+
+        if (hasAmPm) {
+          for (final timePattern in _timePatternsAmPm) {
+            timeFormats.add(DateFormat(timePattern));
+          }
+        }
+
+        this.parserFormats = timeFormats;
       }
     }
   }
 
   @override
   State<VscDatetimeField> createState() => _VscDatetimeFieldState();
+
+  DateTime? _truncateBasedOnType(DateTime? value) {
+    if (value == null) return value;
+
+    // Truncate date or time parts if they don't apply.
+    if (type == VscDatetimeFieldType.date) {
+      return DateTime(value.year, value.month, value.day);
+    }
+
+    if (type == VscDatetimeFieldType.time) {
+      return DateTime(0, 1, 1, value.hour, value.minute, value.second,
+          value.millisecond, value.microsecond);
+    }
+
+    return value;
+  }
 }
 
 class _VscDatetimeFieldState extends State<VscDatetimeField> {
-  static final _dateFmt = DateFormat.yMd();
-  static final _dateTimeFmt = _dateFmt.add_jm();
-
   late final FocusNode _focusNode = FocusNode();
   late final TextEditingController _textEditingController =
       TextEditingController();
@@ -175,7 +251,7 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
   void initState() {
     super.initState();
 
-    _setValue(widget.initialValue, setText: true);
+    _setValue(widget.initialValue, setText: true, notify: false);
     _pickerBox =
         _PickerBox(context, widget.direction, widget.autoFlipDirection);
 
@@ -194,10 +270,11 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
 
     _effectiveFocusNode.addListener(_focusNodeListener);
 
-    // TODO I don't want this. Is there any reason for _keyboardVisibility?
-    // hide Picker Box on keyboard closed
+    // If the keyboard is hidden on mobile, recalculate available size
     _keyboardVisibilitySubscription =
-        _keyboardVisibility?.listen((bool isVisible) {});
+        _keyboardVisibility?.listen((bool isVisible) {
+      _pickerBox.resize();
+    });
 
     WidgetsBinding.instance.addPostFrameCallback((duration) {
       if (mounted) {
@@ -225,13 +302,17 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
   }
 
   void _initOverlayEntry() {
+    if (widget.type == VscDatetimeFieldType.time) {
+      // Time fields don't have a picker currently.
+      return;
+    }
+
     _pickerBox._overlayEntry = OverlayEntry(builder: (context) {
       final picker = Card(
         child: CalendarDatePicker(
           initialDate: _value ?? DateTime.now(),
-          // TODO pass these values in
-          firstDate: DateTime.parse('0001-01-01'),
-          lastDate: DateTime.parse('3000-01-01'),
+          firstDate: widget.minValue ?? DateTime.parse('1900-01-01'),
+          lastDate: widget.maxValue ?? DateTime.parse('3000-01-01'),
           onDateChanged: (DateTime newValue) {
             // Modify the field's DateTime, sans the time component.
             final currValue = _value ?? DateTime.now();
@@ -254,13 +335,24 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
 
       final renderBox =
           _textFieldGlobalKey.currentContext?.findRenderObject() as RenderBox?;
-      final overlayWidth = min((renderBox?.size.width ?? 100.0), 400.0);
+      var pickerX = 0.0;
+      if (renderBox != null) {
+        // If text field position would cause picker to appear off right edge, slide it left.
+        final screenWidth = MediaQuery.of(context).size.width;
+        final globalFieldPosition = renderBox.localToGlobal(Offset.zero);
+        if ((globalFieldPosition.dx + _pickerWidth) > screenWidth) {
+          pickerX = renderBox
+              .globalToLocal(
+                  Offset(screenWidth - _pickerWidth, globalFieldPosition.dy))
+              .dx;
+        }
+      }
 
       // TODO If it won't fit below, try above (automatically done), then left or right. We can control the width somewhat.
       //   Or, if no room, don't display it.
-      var x = 0.0;
+      const overlayWidth = _pickerWidth;
       var above = _pickerBox.direction == AxisDirection.up;
-      var y = !above
+      var pickerY = !above
           ? _pickerBox.textBoxHeight + widget.pickerVerticalOffset
           : _pickerBox.directionUpOffset;
 
@@ -269,7 +361,7 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
         child: CompositedTransformFollower(
           link: _layerLink,
           showWhenUnlinked: false,
-          offset: Offset(x, y),
+          offset: Offset(pickerX, pickerY),
           child: !above
               ? picker
               : FractionalTranslation(
@@ -367,17 +459,42 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
     );
   }
 
-  void _setValue(DateTime? newValue, {bool setText = false}) {
-    // TODO validate between start date and end date
+  void _setValue(
+    DateTime? newValue, {
+    bool setText = false,
+    bool notify = true,
+  }) {
     _internalErrorText = null;
+    final oldValue = _value;
+    newValue = widget._truncateBasedOnType(newValue);
+    if (newValue != null) {
+      // Validate between min and max
+      if (widget.minValue != null && newValue.isBefore(widget.minValue!)) {
+        _setErrorText(
+            'Must be on or after ${widget.textFormat.format(widget.minValue!)}');
+        return;
+      }
+
+      if (widget.maxValue != null && newValue.isAfter(widget.maxValue!)) {
+        _setErrorText(
+            'Must be on or before ${widget.textFormat.format(widget.maxValue!)}');
+        return;
+      }
+    }
+
     _value = newValue;
+
     if (setText) {
       _effectiveController.text =
-          _value == null ? '' : _dateTimeFmt.format(_value!);
+          _value == null ? '' : widget.textFormat.format(_value!);
       _effectiveController.selection =
           TextSelection.collapsed(offset: _effectiveController.text.length);
     }
     setState(() {});
+
+    if (notify && widget.onValueChanged != null && oldValue != _value) {
+      widget.onValueChanged!(_value);
+    }
   }
 
   void _onTextChanged(String textValue) {
@@ -393,10 +510,12 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
           parseDateTime(textValue, parserFormats: widget.parserFormats);
       _setValue(newValue, setText: false);
     } catch (e) {
-      _internalErrorText = 'Invalid value';
-      setState(() {});
+      _setErrorText('Invalid value');
     }
   }
+
+  void _setErrorText(String errorText) =>
+      setState(() => _internalErrorText = errorText);
 }
 
 /// Supply an instance of this class to the [VscDatetimeField.textFieldConfiguration]
@@ -683,7 +802,7 @@ class _PickerBox {
 
   void open() {
     final widget = context.widget as VscDatetimeField;
-    if (widget.readOnly || isOpened) return;
+    if (widget.readOnly || isOpened || _overlayEntry == null) return;
     assert(_overlayEntry != null);
     resize();
     Overlay.of(context)!.insert(_overlayEntry!);
@@ -691,7 +810,7 @@ class _PickerBox {
   }
 
   void close() {
-    if (!isOpened) return;
+    if (!isOpened || _overlayEntry == null) return;
     assert(_overlayEntry != null);
     _overlayEntry!.remove();
     isOpened = false;
@@ -746,7 +865,7 @@ class _PickerBox {
   void resize() {
     // check to see if widget is still mounted
     // user may have closed the widget with the keyboard still open
-    if (widgetMounted) {
+    if (widgetMounted && _overlayEntry != null) {
       _adjustMaxHeightAndOrientation();
       _overlayEntry!.markNeedsBuild();
     }
