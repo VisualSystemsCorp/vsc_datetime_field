@@ -93,10 +93,10 @@ class VscDatetimeField extends StatefulWidget {
 
   late final DateFormat textFormat;
 
-  /// Minimum value to limit input/picker. Defaults to 1900-01-01T00:00:00.
+  /// Minimum value to limit input/picker. Defaults to 1900-01-01T00:00:00.000.
   late final DateTime minValue;
 
-  /// Minimum value to limit input/picker. Defaults to 3000-01-01T00:00:00.
+  /// Minimum value to limit input/picker. Defaults to 3000-01-01T23:59:59.999.
   late final DateTime maxValue;
 
   VscDatetimeField({
@@ -115,10 +115,10 @@ class VscDatetimeField extends StatefulWidget {
     DateFormat? textFormat,
   }) : super(key: key) {
     // Make sure date or time components are truncated so validation is reliable.
-    this.minValue =
-        _truncateBasedOnType(minValue ?? DateTime.parse('1900-01-01'))!;
-    this.maxValue =
-        _truncateBasedOnType(maxValue ?? DateTime.parse('3000-01-01'))!;
+    this.minValue = _truncateBasedOnType(
+        minValue ?? DateTime.parse('1900-01-01T00:00:00.000'))!;
+    this.maxValue = _truncateBasedOnType(
+        maxValue ?? DateTime.parse('3000-01-01T23:59:59.999'))!;
     assert(this.minValue.isBefore(this.maxValue) ||
         this.minValue == this.maxValue);
 
