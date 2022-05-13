@@ -93,9 +93,11 @@ class VscDatetimeField extends StatefulWidget {
 
   late final DateFormat textFormat;
 
-  // Minimum and maximum value to limit input/picker.
-  late final DateTime? minValue;
-  late final DateTime? maxValue;
+  /// Minimum value to limit input/picker. Defaults to 1900-01-01T00:00:00.
+  late final DateTime minValue;
+
+  /// Minimum value to limit input/picker. Defaults to 3000-01-01T00:00:00.
+  late final DateTime maxValue;
 
   VscDatetimeField({
     Key? key,
@@ -113,12 +115,12 @@ class VscDatetimeField extends StatefulWidget {
     DateFormat? textFormat,
   }) : super(key: key) {
     // Make sure date or time components are truncated so validation is reliable.
-    this.minValue = _truncateBasedOnType(minValue);
-    this.maxValue = _truncateBasedOnType(maxValue);
-    assert(this.minValue == null ||
-        this.maxValue == null ||
-        this.minValue!.isBefore(this.maxValue!) ||
-        this.minValue! == this.maxValue!);
+    this.minValue =
+        _truncateBasedOnType(minValue ?? DateTime.parse('1900-01-01'))!;
+    this.maxValue =
+        _truncateBasedOnType(maxValue ?? DateTime.parse('3000-01-01'))!;
+    assert(this.minValue.isBefore(this.maxValue) ||
+        this.minValue == this.maxValue);
 
     if (textFormat != null) {
       this.textFormat = textFormat;
@@ -313,18 +315,18 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
 
     _pickerBox._overlayEntry = OverlayEntry(builder: (context) {
       var initialDate = _value ?? DateTime.now();
-      if (widget.minValue != null && initialDate.isBefore(widget.minValue!)) {
-        initialDate = widget.minValue!;
+      if (initialDate.isBefore(widget.minValue)) {
+        initialDate = widget.minValue;
       }
-      if (widget.maxValue != null && initialDate.isAfter(widget.maxValue!)) {
-        initialDate = widget.maxValue!;
+      if (initialDate.isAfter(widget.maxValue)) {
+        initialDate = widget.maxValue;
       }
 
       final picker = Card(
         child: CalendarDatePicker(
           initialDate: initialDate,
-          firstDate: widget.minValue ?? DateTime.parse('1900-01-01'),
-          lastDate: widget.maxValue ?? DateTime.parse('3000-01-01'),
+          firstDate: widget.minValue,
+          lastDate: widget.maxValue,
           onDateChanged: (DateTime newValue) {
             // Modify the field's DateTime, sans the time component.
             final currValue = _value ?? DateTime.now();
@@ -476,15 +478,15 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
     newValue = widget._truncateBasedOnType(newValue);
     if (newValue != null) {
       // Validate between min and max
-      if (widget.minValue != null && newValue.isBefore(widget.minValue!)) {
+      if (newValue.isBefore(widget.minValue)) {
         _setErrorText(
-            'Must be on or after ${widget.textFormat.format(widget.minValue!)}');
+            'Must be on or after ${widget.textFormat.format(widget.minValue)}');
         return;
       }
 
-      if (widget.maxValue != null && newValue.isAfter(widget.maxValue!)) {
+      if (newValue.isAfter(widget.maxValue)) {
         _setErrorText(
-            'Must be on or before ${widget.textFormat.format(widget.maxValue!)}');
+            'Must be on or before ${widget.textFormat.format(widget.maxValue)}');
         return;
       }
     }
