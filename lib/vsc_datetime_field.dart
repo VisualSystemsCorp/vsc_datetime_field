@@ -209,7 +209,7 @@ class VscDatetimeField extends StatefulWidget {
   }
 
   @override
-  State<VscDatetimeField> createState() => _VscDatetimeFieldState();
+  State<VscDatetimeField> createState() => VscDatetimeFieldState();
 
   DateTime? _truncateBasedOnType(DateTime? value) {
     if (value == null) return value;
@@ -228,7 +228,7 @@ class VscDatetimeField extends StatefulWidget {
   }
 }
 
-class _VscDatetimeFieldState extends State<VscDatetimeField> {
+class VscDatetimeFieldState extends State<VscDatetimeField> {
   late final FocusNode _focusNode = FocusNode();
   late final TextEditingController _textEditingController =
       TextEditingController();
@@ -252,6 +252,7 @@ class _VscDatetimeFieldState extends State<VscDatetimeField> {
 
   DateTime? _value;
   String? _internalErrorText;
+  String? get internalValidationErrorMsg => _internalErrorText;
 
   @override
   void initState() {
