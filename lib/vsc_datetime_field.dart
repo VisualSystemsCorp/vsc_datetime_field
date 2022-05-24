@@ -415,6 +415,7 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
                 widget.textFieldConfiguration.decoration.errorText,
             suffixIcon: _value == null || widget.readOnly
                 ? InkResponse(
+                    radius: 24,
                     canRequestFocus: false,
                     child: Icon(widget.type == VscDatetimeFieldType.time
                         ? Icons.access_time_outlined
@@ -432,6 +433,7 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
                           },
                   )
                 : InkResponse(
+                    radius: 24,
                     child: const Icon(Icons.clear_outlined),
                     onTap: () => _setValue(null, setText: true),
                   ),
