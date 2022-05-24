@@ -414,12 +414,13 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
             errorText: _internalErrorText ??
                 widget.textFieldConfiguration.decoration.errorText,
             suffixIcon: _value == null || widget.readOnly
-                ? InkWell(
+                ? InkResponse(
                     canRequestFocus: false,
                     child: Icon(widget.type == VscDatetimeFieldType.time
                         ? Icons.access_time_outlined
                         : Icons.event_outlined),
-                    onTap: widget.readOnly
+                    onTap: widget.readOnly ||
+                            widget.type == VscDatetimeFieldType.time
                         ? null
                         : () {
                             if (_pickerBox.isOpened) {
@@ -430,7 +431,7 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
                             }
                           },
                   )
-                : InkWell(
+                : InkResponse(
                     child: const Icon(Icons.clear_outlined),
                     onTap: () => _setValue(null, setText: true),
                   ),
