@@ -1,7 +1,7 @@
 name: vsc_datetime_field
 description: A Date and time field supporting keyboard and picker.
 version: 0.0.1
-homepage:
+homepage: https://vscorp.com
 
 environment:
   sdk: ">=2.16.2 <3.0.0"
