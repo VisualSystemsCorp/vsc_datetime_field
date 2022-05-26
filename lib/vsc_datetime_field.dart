@@ -498,10 +498,11 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
     _value = newValue;
 
     if (setText) {
-      _effectiveController.text =
-          _value == null ? '' : widget.textFormat.format(_value!);
-      _effectiveController.selection =
-          TextSelection.collapsed(offset: _effectiveController.text.length);
+      final newValue = _value == null ? '' : widget.textFormat.format(_value!);
+      _effectiveController.value = _effectiveController.value.copyWith(
+        text: newValue,
+        selection: TextSelection.collapsed(offset: newValue.length),
+      );
     }
     setState(() {});
 
