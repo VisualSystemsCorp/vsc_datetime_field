@@ -33,6 +33,13 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
+  final ValueNotifier<DateTime?> _valueController = ValueNotifier(null);
+
+  @override
+  void dispose() {
+    _valueController.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -48,10 +55,12 @@ class _MyHomePageState extends State<MyHomePage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 ElevatedButton(
-                    onPressed: () {}, child: const Text('Focus test')),
+                    onPressed: () => _valueController.value = DateTime.now(),
+                    child: const Text('Set date/time on fields')),
                 const SizedBox(height: 30),
                 VscDatetimeField(
                   type: VscDatetimeFieldType.date,
+                  valueController: _valueController,
                   textFieldConfiguration: const TextFieldConfiguration(
                       decoration: InputDecoration(
                     label: Text('Date only'),
@@ -64,6 +73,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 const SizedBox(height: 30),
                 VscDatetimeField(
                   type: VscDatetimeFieldType.datetime,
+                  valueController: _valueController,
                   textFieldConfiguration: const TextFieldConfiguration(
                       decoration: InputDecoration(
                     label: Text('Datetime'),
@@ -76,6 +86,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 const SizedBox(height: 30),
                 VscDatetimeField(
                   type: VscDatetimeFieldType.time,
+                  valueController: _valueController,
                   textFieldConfiguration: const TextFieldConfiguration(
                       decoration: InputDecoration(
                     label: Text('Time only'),
@@ -87,12 +98,12 @@ class _MyHomePageState extends State<MyHomePage> {
                 const SizedBox(height: 30),
                 VscDatetimeField(
                   type: VscDatetimeFieldType.date,
+                  valueController: _valueController,
                   textFieldConfiguration: const TextFieldConfiguration(
                       decoration: InputDecoration(
                     label: Text('Date - Read-only'),
                   )),
                   readOnly: true,
-                  initialValue: DateTime.parse('2012-12-31'),
                 ),
                 const SizedBox(height: 30),
                 ElevatedButton(

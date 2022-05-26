@@ -86,8 +86,6 @@ class VscDatetimeField extends StatefulWidget {
 
   final bool readOnly;
 
-  final DateTime? initialValue;
-
   /// [DateFormat]s to be used in parsing user-entered dates or date-times, in order of precedence.
   late final List<DateFormat> parserFormats;
 
@@ -99,6 +97,11 @@ class VscDatetimeField extends StatefulWidget {
   /// Minimum value to limit input/picker. Defaults to 3000-01-01T23:59:59.999.
   late final DateTime maxValue;
 
+  /// Controls the value in the datetime field dynamically. Setting the value on this
+  /// controller externally will cause the field to be updated. It is also used to
+  /// set the initial value.
+  late final ValueNotifier<DateTime?>? valueController;
+
   VscDatetimeField({
     Key? key,
     this.type = VscDatetimeFieldType.date,
@@ -108,7 +111,7 @@ class VscDatetimeField extends StatefulWidget {
     this.autoFlipDirection = true,
     this.onValueChanged,
     this.readOnly = false,
-    this.initialValue,
+    this.valueController,
     DateTime? minValue,
     DateTime? maxValue,
     List<DateFormat>? parserFormats,
@@ -258,7 +261,10 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
   void initState() {
     super.initState();
 
-    _setValue(widget.initialValue, setText: true, notify: false);
+    final initialValue = widget.valueController?.value;
+    _setValue(initialValue, setText: true, notify: false);
+    widget.valueController?.addListener(_valueControllerListener);
+
     _pickerBox =
         _PickerBox(context, widget.direction, widget.autoFlipDirection);
 
@@ -305,7 +311,12 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
     _effectiveFocusNode.removeListener(_focusNodeListener);
     _focusNode.dispose();
     _textEditingController.dispose();
+    widget.valueController?.removeListener(_valueControllerListener);
     super.dispose();
+  }
+
+  void _valueControllerListener() {
+    _setValue(widget.valueController?.value, setText: true, notify: false);
   }
 
   void _initOverlayEntry() {
@@ -342,7 +353,7 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
                 currValue.millisecond,
                 currValue.microsecond,
               ),
-              setText: true,
+              setTextAndMoveCursorToEnd: true,
             );
           },
         ),
@@ -475,6 +486,7 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
   void _setValue(
     DateTime? newValue, {
     bool setText = false,
+    bool setTextAndMoveCursorToEnd = false,
     bool notify = true,
   }) {
     _internalErrorText = null;
@@ -497,11 +509,13 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
 
     _value = newValue;
 
-    if (setText) {
+    if (setText || setTextAndMoveCursorToEnd) {
       final newValue = _value == null ? '' : widget.textFormat.format(_value!);
       _effectiveController.value = _effectiveController.value.copyWith(
         text: newValue,
-        selection: TextSelection.collapsed(offset: newValue.length),
+        selection: setTextAndMoveCursorToEnd
+            ? TextSelection.collapsed(offset: newValue.length)
+            : null,
       );
     }
     setState(() {});
