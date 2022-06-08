@@ -34,6 +34,8 @@ class MyHomePage extends StatefulWidget {
 
 class _MyHomePageState extends State<MyHomePage> {
   final ValueNotifier<DateTime?> _valueController = ValueNotifier(null);
+  final ValueNotifier<DateTime?> _interactiveValueController =
+      ValueNotifier(null);
 
   @override
   void dispose() {
@@ -104,6 +106,18 @@ class _MyHomePageState extends State<MyHomePage> {
                     label: Text('Date - Read-only'),
                   )),
                   readOnly: true,
+                ),
+                const SizedBox(height: 30),
+                VscDatetimeField(
+                  type: VscDatetimeFieldType.datetime,
+                  valueController: _interactiveValueController,
+                  textFieldConfiguration: const TextFieldConfiguration(
+                      decoration: InputDecoration(
+                    label: Text(
+                        'Independent Datetime with interacting valueController'),
+                  )),
+                  onValueChanged: (dt) =>
+                      _interactiveValueController.value = dt,
                 ),
                 const SizedBox(height: 30),
                 ElevatedButton(

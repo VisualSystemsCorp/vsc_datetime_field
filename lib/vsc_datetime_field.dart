@@ -316,7 +316,9 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
   }
 
   void _valueControllerListener() {
-    _setValue(widget.valueController?.value, setText: true, notify: false);
+    // Only set the text if we don't have focus
+    _setValue(widget.valueController?.value,
+        setText: !_effectiveFocusNode.hasFocus, notify: false);
   }
 
   void _initOverlayEntry() {
