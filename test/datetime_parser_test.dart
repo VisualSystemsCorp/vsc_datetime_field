@@ -1,4 +1,3 @@
-import 'package:clock/clock.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:intl/intl.dart';
 import 'package:vsc_datetime_field/datetime_parser.dart';
@@ -61,6 +60,7 @@ final currentYear = fixedTime.year;
 
 main() {
   Intl.defaultLocale = 'en-US';
+  testableNow = () => fixedTime;
 
   for (final t in [
     // --- Date only formats
@@ -168,11 +168,9 @@ main() {
     _Case([DateFormat('K')], '0', DateTime.parse('2023-10-06T00:00:00.000')),
   ]) {
     test('successfully parses ${t.inputString}', () {
-      withClock(Clock.fixed(fixedTime), () {
-        final result =
-            parseDateTime(t.inputString, parserFormats: t.parserFormatters);
-        expect(result, t.expectedResult);
-      });
+      final result =
+          parseDateTime(t.inputString, parserFormats: t.parserFormatters);
+      expect(result, t.expectedResult);
     });
   }
 
@@ -212,25 +210,21 @@ main() {
   }
 
   test('Does not adjust for ambiguous year based on param', () {
-    withClock(Clock.fixed(fixedTime), () {
-      final result = parseDateTime(
-        '5/2/22',
-        parserFormats: [DateFormat('M/d/y')],
-        allowAmbiguousYear: false,
-      );
-      expect(result, DateTime.parse('0022-05-02T00:00:00.000'));
-    });
+    final result = parseDateTime(
+      '5/2/22',
+      parserFormats: [DateFormat('M/d/y')],
+      allowAmbiguousYear: false,
+    );
+    expect(result, DateTime.parse('0022-05-02T00:00:00.000'));
   });
 
   test('Adjusts for UTC based on param', () {
-    withClock(Clock.fixed(fixedTime), () {
-      final result = parseDateTime(
-        '5/2/22 00:00:00',
-        parserFormats: [DateFormat('M/d/y H:m:s')],
-        utc: true,
-      );
-      expect(result, DateTime.parse('2022-05-02T00:00:00.000').toUtc());
-    });
+    final result = parseDateTime(
+      '5/2/22 00:00:00',
+      parserFormats: [DateFormat('M/d/y H:m:s')],
+      utc: true,
+    );
+    expect(result, DateTime.parse('2022-05-02T00:00:00.000').toUtc());
   });
 }
 

@@ -1,7 +1,10 @@
 import 'dart:math';
 
-import 'package:clock/clock.dart';
+import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
+
+@visibleForTesting
+DateTime Function() testableNow = DateTime.now;
 
 final _quotedToken = RegExp(r"'[^']*'");
 final _punctRegexp = RegExp(r'\p{P}', unicode: true);
@@ -146,7 +149,7 @@ DateTime _tryParse(
     }
   }
 
-  var now = clock.now();
+  var now = testableNow();
   if (utc) {
     now = now.toUtc();
   }

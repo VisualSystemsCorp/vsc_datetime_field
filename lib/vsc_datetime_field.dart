@@ -40,6 +40,7 @@ const _timePatternsAmPm = [
 ];
 
 enum VscDatetimeFieldType { date, datetime, time }
+
 /*
  * TODO
  *  - Sometimes there's just not enough room with the kbd open on mobile. Don't show any picker in this case.
@@ -328,7 +329,7 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
     }
 
     _pickerBox._overlayEntry = OverlayEntry(builder: (context) {
-      var initialDate = _value ?? DateTime.now();
+      var initialDate = _value ?? testableNow();
       if (initialDate.isBefore(widget.minValue)) {
         initialDate = widget.minValue;
       }
@@ -343,7 +344,7 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
           lastDate: widget.maxValue,
           onDateChanged: (DateTime newValue) {
             // Modify the field's DateTime, sans the time component.
-            final currValue = _value ?? DateTime.now();
+            final currValue = _value ?? testableNow();
             _setValue(
               DateTime(
                 newValue.year,
