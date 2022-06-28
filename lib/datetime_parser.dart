@@ -3,7 +3,7 @@ import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 
-@visibleForTesting
+// For testing:
 DateTime Function() testableNow = DateTime.now;
 
 final _quotedToken = RegExp(r"'[^']*'");

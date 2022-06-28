@@ -39,6 +39,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
   @override
   void dispose() {
+    super.dispose();
     _valueController.dispose();
   }
 
@@ -68,7 +69,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     label: Text('Date only'),
                   )),
                   onValueChanged: (value) =>
-                      print('Date only field value: $value'),
+                      debugPrint('Date only field value: $value'),
                   minValue: DateTime.parse('2020-02-15'),
                   maxValue: DateTime.parse('2025-12-15'),
                 ),
@@ -81,7 +82,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     label: Text('Datetime'),
                   )),
                   onValueChanged: (value) =>
-                      print('Datetime field value: $value'),
+                      debugPrint('Datetime field value: $value'),
                   minValue: DateTime.parse('2020-02-15 08:00:00'),
                   maxValue: DateTime.parse('2025-12-15 17:00:00'),
                 ),
@@ -93,7 +94,8 @@ class _MyHomePageState extends State<MyHomePage> {
                       decoration: InputDecoration(
                     label: Text('Time only'),
                   )),
-                  onValueChanged: (value) => print('Time field value: $value'),
+                  onValueChanged: (value) =>
+                      debugPrint('Time field value: $value'),
                   minValue: DateTime.parse('1970-01-01 08:00:00'),
                   maxValue: DateTime.parse('2099-01-01 17:00:00'),
                 ),
