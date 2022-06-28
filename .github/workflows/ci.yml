@@ -4,13 +4,10 @@ on:
   push:
     branches:
       - master
-    paths:
-      - "package/**"
   pull_request:
     branches:
-      - master
-    paths:
-      - "package/**"
+      - '**'
+  workflow_dispatch:
 
 jobs:
   test:
