@@ -11,9 +11,6 @@ on:
 
 jobs:
   test:
-    defaults:
-      run:
-        working-directory: package
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
