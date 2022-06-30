@@ -132,6 +132,31 @@ void dateOnlyGroupTests() {
         matchesGoldenFile('goldens/date_only_with_picker_above_field.png'));
   });
 
+  testWidgets('does not allow entry nor displays picker when read-only',
+      (tester) async {
+    await tester.pumpDateOnlyField(readOnly: true);
+
+    // Focuses and but does NOT pop-up picker
+    await tester.showKeyboard(fieldFinder);
+    await tester.pumpAndSettle();
+
+    expect(calPickerFinder, findsNothing);
+
+    await tester.enterText(fieldFinder, '1/2/22');
+    await tester.pumpAndSettle();
+
+    // Value should not have changed.
+    expect(tester.getTextField().controller!.text, '');
+    expect(tester.getTextField().decoration!.errorText, null);
+    expect(onValueChangedChanges, isEmpty);
+
+    // Tap the icon button - the picker should not be displayed.
+    await tester.tap(dateIconFinder);
+    await tester.pumpAndSettle();
+
+    expect(calPickerFinder, findsNothing);
+  });
+
   testWidgets('date filling in year', (tester) async {
     await tester.pumpDateOnlyField();
 
@@ -608,7 +633,7 @@ void timeGroupTests() {
 extension MoreWidgetTester on WidgetTester {
   TextField getTextField() => widget(textFieldFinder);
 
-  Future<void> pumpDateOnlyField() async {
+  Future<void> pumpDateOnlyField({bool readOnly = false}) async {
     await pumpWidgetWithHarness(VscDatetimeField(
       type: VscDatetimeFieldType.date,
       valueController: valueController,
@@ -619,6 +644,7 @@ extension MoreWidgetTester on WidgetTester {
       onValueChanged: (value) => onValueChangedChanges.add(value),
       minValue: DateTime.parse('2020-02-15'),
       maxValue: DateTime.parse('2025-12-15'),
+      readOnly: readOnly,
     ));
   }
 
@@ -665,7 +691,7 @@ extension MoreWidgetTester on WidgetTester {
 
   Future<void> pumpWidgetWithHarness(
     Widget child, {
-    bool onBottom = true,
+    bool onBottom = false,
   }) async {
     await pumpWidget(
       MaterialApp(
