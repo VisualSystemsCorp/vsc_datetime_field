@@ -115,6 +115,23 @@ void dateOnlyGroupTests() {
     expect(tester.getTextField().decoration!.errorText, null);
   });
 
+  testWidgets('picker pops above field if not enough room below',
+      (tester) async {
+    await tester.pumpDateOnlyFieldOnBottom();
+
+    expect(calPickerFinder, findsNothing);
+
+    // Focuses and picker is displayed
+    await tester.showKeyboard(fieldFinder);
+    await tester.pumpAndSettle();
+
+    // Calendar picker should be up now
+    expect(calPickerFinder, findsOneWidget);
+
+    await expectLater(find.byType(MaterialApp),
+        matchesGoldenFile('goldens/date_only_with_picker_above_field.png'));
+  });
+
   testWidgets('date filling in year', (tester) async {
     await tester.pumpDateOnlyField();
 
@@ -605,6 +622,19 @@ extension MoreWidgetTester on WidgetTester {
     ));
   }
 
+  Future<void> pumpDateOnlyFieldOnBottom() async {
+    await pumpWidgetWithHarness(
+        VscDatetimeField(
+          type: VscDatetimeFieldType.date,
+          valueController: valueController,
+          textFieldConfiguration: const TextFieldConfiguration(
+              decoration: InputDecoration(
+            label: Text(label),
+          )),
+        ),
+        onBottom: true);
+  }
+
   Future<void> pumpDatetimeField() async {
     await pumpWidgetWithHarness(VscDatetimeField(
       type: VscDatetimeFieldType.datetime,
@@ -633,7 +663,10 @@ extension MoreWidgetTester on WidgetTester {
     ));
   }
 
-  Future<void> pumpWidgetWithHarness(Widget child) async {
+  Future<void> pumpWidgetWithHarness(
+    Widget child, {
+    bool onBottom = true,
+  }) async {
     await pumpWidget(
       MaterialApp(
         debugShowCheckedModeBanner: false,
@@ -643,6 +676,7 @@ extension MoreWidgetTester on WidgetTester {
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
+              if (onBottom) const Spacer(),
               child,
               // A button to test focus
               ElevatedButton(

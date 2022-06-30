@@ -28,3 +28,4 @@
 .packages
 build/
 **/coverage/
+/test/failures/
