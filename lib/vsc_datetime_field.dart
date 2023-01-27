@@ -836,7 +836,7 @@ class _PickerBox {
     if (widget.readOnly || isOpened || _overlayEntry == null) return;
     assert(_overlayEntry != null);
     resize();
-    Overlay.of(context)!.insert(_overlayEntry!);
+    Overlay.of(context).insert(_overlayEntry!);
     isOpened = true;
   }
 
