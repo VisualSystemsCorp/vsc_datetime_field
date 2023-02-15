@@ -237,7 +237,6 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
       FocusNode(debugLabel: 'VscDatetimeFieldState');
   late final TextEditingController _textEditingController =
       TextEditingController();
-  late final _PickerBox _pickerBox;
 
   TextEditingController get _effectiveController =>
       widget.textFieldConfiguration.controller ?? _textEditingController;
@@ -245,8 +244,6 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
   FocusNode get _effectiveFocusNode =>
       widget.textFieldConfiguration.focusNode ?? _focusNode;
   late VoidCallback _focusNodeListener;
-
-  final LayerLink _layerLink = LayerLink();
 
   // Keyboard detection
   final Stream<bool>? _keyboardVisibility =
@@ -267,48 +264,20 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
     _setValue(initialValue, setText: true, notify: false);
     widget.valueController?.addListener(_valueControllerListener);
 
-    _pickerBox =
-        _PickerBox(context, widget.direction, widget.autoFlipDirection);
-
     _focusNodeListener = () {
-      if (_effectiveFocusNode.hasFocus) {
-        _pickerBox.open();
-      } else {
+      if (!_effectiveFocusNode.hasFocus) {
         // Reformat text from value, only if no error.
         if (_internalErrorText == null) {
           _setValue(_value, setText: true);
         }
-
-        _pickerBox.close();
       }
     };
 
     _effectiveFocusNode.addListener(_focusNodeListener);
-
-    // If the keyboard is hidden on mobile, recalculate available size
-    _keyboardVisibilitySubscription =
-        _keyboardVisibility?.listen((bool isVisible) {
-      _pickerBox.resize();
-    });
-
-    WidgetsBinding.instance.addPostFrameCallback((duration) {
-      if (mounted) {
-        _initOverlayEntry();
-        // calculate initial picker box size
-        _pickerBox.resize();
-
-        // in case we already missed the focus event
-        if (_effectiveFocusNode.hasFocus) {
-          _pickerBox.open();
-        }
-      }
-    });
   }
 
   @override
   void dispose() {
-    _pickerBox.dispose();
-    _pickerBox.widgetMounted = false;
     _keyboardVisibilitySubscription?.cancel();
     _effectiveFocusNode.removeListener(_focusNodeListener);
     _focusNode.dispose();
@@ -323,168 +292,146 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
         setText: !_effectiveFocusNode.hasFocus, notify: false);
   }
 
-  void _initOverlayEntry() {
-    if (widget.type == VscDatetimeFieldType.time) {
-      // Time fields don't have a picker currently.
-      return;
-    }
-
-    _pickerBox._overlayEntry = OverlayEntry(builder: (context) {
-      var initialDate = _value ?? testableNow();
-      if (initialDate.isBefore(widget.minValue)) {
-        initialDate = widget.minValue;
-      }
-      if (initialDate.isAfter(widget.maxValue)) {
-        initialDate = widget.maxValue;
-      }
-
-      final picker = Card(
-        child: CalendarDatePicker(
-          initialDate: initialDate,
-          firstDate: widget.minValue,
-          lastDate: widget.maxValue,
-          onDateChanged: (DateTime newValue) {
-            // Modify the field's DateTime, sans the time component.
-            final currValue = _value ?? testableNow();
-            _setValue(
-              DateTime(
-                newValue.year,
-                newValue.month,
-                newValue.day,
-                currValue.hour,
-                currValue.minute,
-                currValue.second,
-                currValue.millisecond,
-                currValue.microsecond,
-              ),
-              setTextAndMoveCursorToEnd: true,
-            );
-          },
-        ),
-      );
-
-      final renderBox =
-          _textFieldGlobalKey.currentContext?.findRenderObject() as RenderBox?;
-      var pickerX = 0.0;
-      if (renderBox != null) {
-        // If text field position would cause picker to appear off right edge, slide it left.
-        final screenWidth = MediaQuery.of(context).size.width;
-        final globalFieldPosition = renderBox.localToGlobal(Offset.zero);
-        if ((globalFieldPosition.dx + _pickerWidth) > screenWidth) {
-          pickerX = renderBox
-              .globalToLocal(
-                  Offset(screenWidth - _pickerWidth, globalFieldPosition.dy))
-              .dx;
-        }
-      }
-
-      // TODO If it won't fit below, try above (automatically done), then left or right. We can control the width somewhat.
-      //   Or, if no room, don't display it.
-      const overlayWidth = _pickerWidth;
-      var above = _pickerBox.direction == AxisDirection.up;
-      var pickerY = !above
-          ? _pickerBox.textBoxHeight + widget.pickerVerticalOffset
-          : _pickerBox.directionUpOffset;
-
-      return Positioned(
-        width: overlayWidth,
-        child: CompositedTransformFollower(
-          link: _layerLink,
-          showWhenUnlinked: false,
-          offset: Offset(pickerX, pickerY),
-          child: !above
-              ? picker
-              : FractionalTranslation(
-                  // visually flips list to go up
-                  translation: const Offset(0.0, -1.0),
-                  child: picker,
-                ),
-        ),
-      );
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Make sure the pickerBox position is reset in case an error message shows up
-    // below the field, or if it goes away. This must be done after the size of
-    // this widget is known.
-    if (_pickerBox.isOpened) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _pickerBox.resize();
-      });
-    }
-
-    return CallbackShortcuts(
-      bindings: {
-        const SingleActivator(LogicalKeyboardKey.escape): _pickerBox.close,
-      },
-      child: CompositedTransformTarget(
-        link: _layerLink,
-        child: TextField(
-          key: _textFieldGlobalKey,
-          focusNode: _effectiveFocusNode,
-          controller: _effectiveController,
-          decoration: widget.textFieldConfiguration.decoration.copyWith(
-            errorText: _internalErrorText ??
-                widget.textFieldConfiguration.decoration.errorText,
-            suffixIcon: _value == null || widget.readOnly
-                ? InkResponse(
-                    radius: 24,
-                    canRequestFocus: false,
-                    onTap: widget.readOnly ||
-                            widget.type == VscDatetimeFieldType.time
-                        ? null
-                        : () {
-                            if (_pickerBox.isOpened) {
-                              _pickerBox.close();
-                            } else {
-                              _pickerBox.open();
-                              _effectiveFocusNode.requestFocus();
-                            }
-                          },
-                    child: Icon(widget.type == VscDatetimeFieldType.time
-                        ? Icons.access_time_outlined
-                        : Icons.event_outlined),
-                  )
-                : InkResponse(
-                    radius: 24,
-                    child: const Icon(Icons.clear_outlined),
-                    onTap: () => _setValue(null, setText: true),
-                  ),
-          ),
-          style: widget.textFieldConfiguration.style,
-          textAlign: widget.textFieldConfiguration.textAlign,
-          enabled: widget.textFieldConfiguration.enabled,
-          keyboardType: widget.textFieldConfiguration.keyboardType,
-          autofocus: widget.textFieldConfiguration.autofocus,
-          inputFormatters: widget.textFieldConfiguration.inputFormatters,
-          autocorrect: widget.textFieldConfiguration.autocorrect,
-          maxLines: widget.textFieldConfiguration.maxLines,
-          textAlignVertical: widget.textFieldConfiguration.textAlignVertical,
-          minLines: widget.textFieldConfiguration.minLines,
-          maxLength: widget.textFieldConfiguration.maxLength,
-          maxLengthEnforcement:
-              widget.textFieldConfiguration.maxLengthEnforcement,
-          obscureText: widget.textFieldConfiguration.obscureText,
-          onChanged: _onTextChanged,
-          onSubmitted: widget.textFieldConfiguration.onSubmitted,
-          onEditingComplete: widget.textFieldConfiguration.onEditingComplete,
-          onTap: widget.textFieldConfiguration.onTap,
-          scrollPadding: widget.textFieldConfiguration.scrollPadding,
-          textInputAction: widget.textFieldConfiguration.textInputAction,
-          textCapitalization: widget.textFieldConfiguration.textCapitalization,
-          keyboardAppearance: widget.textFieldConfiguration.keyboardAppearance,
-          cursorWidth: widget.textFieldConfiguration.cursorWidth,
-          cursorRadius: widget.textFieldConfiguration.cursorRadius,
-          cursorColor: widget.textFieldConfiguration.cursorColor,
-          textDirection: widget.textFieldConfiguration.textDirection,
-          enableInteractiveSelection:
-              widget.textFieldConfiguration.enableInteractiveSelection,
-          readOnly: widget.readOnly,
+    return TextField(
+      key: _textFieldGlobalKey,
+      focusNode: _effectiveFocusNode,
+      controller: _effectiveController,
+      decoration: widget.textFieldConfiguration.decoration.copyWith(
+        errorText: _internalErrorText ??
+            widget.textFieldConfiguration.decoration.errorText,
+        suffixIcon: InkResponse(
+          radius: 24,
+          canRequestFocus: false,
+          onTap: widget.readOnly ? null : _openPicker,
+          child: Icon(widget.type == VscDatetimeFieldType.time
+              ? Icons.access_time_outlined
+              : Icons.event_outlined),
         ),
+        // suffixIcon: Row(
+        //   mainAxisSize: MainAxisSize.min,
+        //   children: [
+        //     if (_value != null && !widget.readOnly)
+        //       InkResponse(
+        //         radius: 24,
+        //         child: const Icon(Icons.clear_outlined),
+        //         onTap: () => _setValue(null, setText: true),
+        //       ),
+        //     const SizedBox(width: 8),
+        //     InkResponse(
+        //       radius: 24,
+        //       canRequestFocus: false,
+        //       onTap: widget.readOnly ? null : _openPicker,
+        //       child: Icon(widget.type == VscDatetimeFieldType.time
+        //           ? Icons.access_time_outlined
+        //           : Icons.event_outlined),
+        //     )
+        //   ],
+        // ),
       ),
+      style: widget.textFieldConfiguration.style,
+      textAlign: widget.textFieldConfiguration.textAlign,
+      enabled: widget.textFieldConfiguration.enabled,
+      keyboardType: widget.textFieldConfiguration.keyboardType,
+      autofocus: widget.textFieldConfiguration.autofocus,
+      inputFormatters: widget.textFieldConfiguration.inputFormatters,
+      autocorrect: widget.textFieldConfiguration.autocorrect,
+      maxLines: widget.textFieldConfiguration.maxLines,
+      textAlignVertical: widget.textFieldConfiguration.textAlignVertical,
+      minLines: widget.textFieldConfiguration.minLines,
+      maxLength: widget.textFieldConfiguration.maxLength,
+      maxLengthEnforcement: widget.textFieldConfiguration.maxLengthEnforcement,
+      obscureText: widget.textFieldConfiguration.obscureText,
+      onChanged: _onTextChanged,
+      onSubmitted: widget.textFieldConfiguration.onSubmitted,
+      onEditingComplete: widget.textFieldConfiguration.onEditingComplete,
+      onTap: widget.textFieldConfiguration.onTap,
+      scrollPadding: widget.textFieldConfiguration.scrollPadding,
+      textInputAction: widget.textFieldConfiguration.textInputAction,
+      textCapitalization: widget.textFieldConfiguration.textCapitalization,
+      keyboardAppearance: widget.textFieldConfiguration.keyboardAppearance,
+      cursorWidth: widget.textFieldConfiguration.cursorWidth,
+      cursorRadius: widget.textFieldConfiguration.cursorRadius,
+      cursorColor: widget.textFieldConfiguration.cursorColor,
+      textDirection: widget.textFieldConfiguration.textDirection,
+      enableInteractiveSelection:
+          widget.textFieldConfiguration.enableInteractiveSelection,
+      readOnly: widget.readOnly,
     );
+  }
+
+  Future<void> _openPicker() async {
+    switch (widget.type) {
+      case VscDatetimeFieldType.date:
+      case VscDatetimeFieldType.datetime:
+        final selected = await showDatePicker(
+          context: context,
+          initialDate: _value ?? DateTime.now(),
+          firstDate: widget.minValue,
+          lastDate: widget.maxValue,
+        );
+
+        _effectiveFocusNode.requestFocus();
+
+        if (selected != null) {
+          // Modify the field's DateTime, sans the time component.
+          final currValue = _value ?? testableNow();
+          _setValue(
+            DateTime(
+              selected.year,
+              selected.month,
+              selected.day,
+              currValue.hour,
+              currValue.minute,
+              currValue.second,
+              currValue.millisecond,
+              currValue.microsecond,
+            ),
+            setTextAndMoveCursorToEnd: true,
+          );
+        }
+
+        break;
+
+      case VscDatetimeFieldType.time:
+        final selected = await showTimePicker(
+          context: context,
+          initialTime: TimeOfDay.now(),
+          // TODO
+          // initialDate: _value ?? DateTime.now(),
+          // firstDate: widget.minValue,
+          // lastDate: widget.maxValue,
+          builder: (context, Widget? child) {
+            return MediaQuery(
+              data:
+                  MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+              child: child!,
+            );
+          },
+        );
+
+        _effectiveFocusNode.requestFocus();
+
+        if (selected != null) {
+          // Modify the field's DateTime, sans the date component.
+          final currValue = _value ?? testableNow();
+          _setValue(
+            DateTime(
+              currValue.year,
+              currValue.month,
+              currValue.day,
+              selected.hour,
+              selected.minute,
+              0,
+              0,
+              0,
+            ),
+            setTextAndMoveCursorToEnd: true,
+          );
+        }
+        break;
+    }
   }
 
   void _setValue(
@@ -808,217 +755,5 @@ class TextFieldConfiguration {
       enableInteractiveSelection:
           enableInteractiveSelection ?? this.enableInteractiveSelection,
     );
-  }
-}
-
-class _PickerBox {
-  static const int waitMetricsTimeoutMillis = 1000;
-  static const double minOverlaySpace = _maxDayPickerHeight;
-
-  final BuildContext context;
-  final AxisDirection desiredDirection;
-  final bool autoFlipDirection;
-
-  OverlayEntry? _overlayEntry;
-  AxisDirection direction;
-
-  bool isOpened = false;
-  bool widgetMounted = true;
-  double maxHeight = _maxDayPickerHeight;
-  double textBoxWidth = 100.0;
-  double textBoxHeight = 100.0;
-  late double directionUpOffset;
-
-  _PickerBox(this.context, this.direction, this.autoFlipDirection)
-      : desiredDirection = direction;
-
-  void dispose() {
-    close();
-    widgetMounted = false;
-  }
-
-  void open() {
-    final widget = context.widget as VscDatetimeField;
-    if (widget.readOnly || isOpened || _overlayEntry == null) return;
-    assert(_overlayEntry != null);
-    resize();
-    Overlay.of(context).insert(_overlayEntry!);
-    isOpened = true;
-  }
-
-  void close() {
-    if (!isOpened || _overlayEntry == null) return;
-    assert(_overlayEntry != null);
-    _overlayEntry!.remove();
-    isOpened = false;
-  }
-
-  void toggle() {
-    if (isOpened) {
-      close();
-    } else {
-      open();
-    }
-  }
-
-  MediaQuery? _findRootMediaQuery() {
-    MediaQuery? rootMediaQuery;
-    context.visitAncestorElements((element) {
-      if (element.widget is MediaQuery) {
-        rootMediaQuery = element.widget as MediaQuery;
-      }
-      return true;
-    });
-
-    return rootMediaQuery;
-  }
-
-  /// Delays until the keyboard has toggled or the orientation has fully changed
-  Future<bool> _waitChangeMetrics() async {
-    if (widgetMounted) {
-      // initial viewInsets which are before the keyboard is toggled
-      EdgeInsets initial = MediaQuery.of(context).viewInsets;
-      // initial MediaQuery for orientation change
-      MediaQuery? initialRootMediaQuery = _findRootMediaQuery();
-
-      int timer = 0;
-      // viewInsets or MediaQuery have changed once keyboard has toggled or orientation has changed
-      while (widgetMounted && timer < waitMetricsTimeoutMillis) {
-        // TODO: reduce delay if showDialog ever exposes detection of animation end
-        await Future<void>.delayed(const Duration(milliseconds: 170));
-        timer += 170;
-
-        final mounted = widgetMounted;
-        if (mounted &&
-            (MediaQuery.of(context).viewInsets != initial ||
-                _findRootMediaQuery() != initialRootMediaQuery)) {
-          return true;
-        }
-      }
-    }
-
-    return false;
-  }
-
-  void resize() {
-    // check to see if widget is still mounted
-    // user may have closed the widget with the keyboard still open
-    if (widgetMounted && _overlayEntry != null) {
-      _adjustMaxHeightAndOrientation();
-      _overlayEntry!.markNeedsBuild();
-    }
-  }
-
-  // See if there's enough room in the desired direction for the overlay to display
-  // correctly. If not, try the opposite direction if things look more roomy there
-  void _adjustMaxHeightAndOrientation() {
-    VscDatetimeField widget = context.widget as VscDatetimeField;
-
-    RenderBox? box = context.findRenderObject() as RenderBox?;
-    if (box == null || box.hasSize == false) {
-      return;
-    }
-
-    textBoxWidth = box.size.width;
-    textBoxHeight = box.size.height;
-
-    // top of text box
-    double textBoxAbsY = box.localToGlobal(Offset.zero).dy;
-
-    // height of window
-    double windowHeight = MediaQuery.of(context).size.height;
-
-    // we need to find the root MediaQuery for the unsafe area height
-    // we cannot use BuildContext.ancestorWidgetOfExactType because
-    // widgets like SafeArea creates a new MediaQuery with the padding removed
-    MediaQuery rootMediaQuery = _findRootMediaQuery()!;
-
-    // height of keyboard
-    double keyboardHeight = rootMediaQuery.data.viewInsets.bottom;
-
-    double maxHDesired = _calculateMaxHeight(desiredDirection, box, widget,
-        windowHeight, rootMediaQuery, keyboardHeight, textBoxAbsY);
-
-    // if there's enough room in the desired direction, update the direction and the max height
-    if (maxHDesired >= minOverlaySpace || !autoFlipDirection) {
-      direction = desiredDirection;
-      maxHeight = maxHDesired;
-    } else {
-      // There's not enough room in the desired direction so see how much room is in the opposite direction
-      AxisDirection flipped = flipAxisDirection(desiredDirection);
-      double maxHFlipped = _calculateMaxHeight(flipped, box, widget,
-          windowHeight, rootMediaQuery, keyboardHeight, textBoxAbsY);
-
-      // if there's more room in this opposite direction, update the direction and maxHeight
-      if (maxHFlipped > maxHDesired) {
-        direction = flipped;
-        maxHeight = maxHFlipped;
-      }
-    }
-
-    if (maxHeight < 0) maxHeight = 0;
-  }
-
-  double _calculateMaxHeight(
-      AxisDirection direction,
-      RenderBox box,
-      VscDatetimeField widget,
-      double windowHeight,
-      MediaQuery rootMediaQuery,
-      double keyboardHeight,
-      double textBoxAbsY) {
-    return direction == AxisDirection.down
-        ? _calculateMaxHeightDown(box, widget, windowHeight, rootMediaQuery,
-            keyboardHeight, textBoxAbsY)
-        : _calculateMaxHeightUp(box, widget, windowHeight, rootMediaQuery,
-            keyboardHeight, textBoxAbsY);
-  }
-
-  double _calculateMaxHeightDown(
-      RenderBox box,
-      VscDatetimeField widget,
-      double windowHeight,
-      MediaQuery rootMediaQuery,
-      double keyboardHeight,
-      double textBoxAbsY) {
-    // unsafe area, ie: iPhone X 'home button'
-    // keyboardHeight includes unsafeAreaHeight, if keyboard is showing, set to 0
-    double unsafeAreaHeight =
-        keyboardHeight == 0 ? rootMediaQuery.data.padding.bottom : 0;
-
-    return windowHeight -
-        keyboardHeight -
-        unsafeAreaHeight -
-        textBoxHeight -
-        textBoxAbsY -
-        2 * widget.pickerVerticalOffset;
-  }
-
-  double _calculateMaxHeightUp(
-      RenderBox box,
-      VscDatetimeField widget,
-      double windowHeight,
-      MediaQuery rootMediaQuery,
-      double keyboardHeight,
-      double textBoxAbsY) {
-    // recalculate keyboard absolute y value
-    double keyboardAbsY = windowHeight - keyboardHeight;
-
-    directionUpOffset = textBoxAbsY > keyboardAbsY
-        ? keyboardAbsY - textBoxAbsY - widget.pickerVerticalOffset
-        : -widget.pickerVerticalOffset;
-
-    // unsafe area, ie: iPhone X notch
-    double unsafeAreaHeight = rootMediaQuery.data.padding.top;
-
-    return textBoxAbsY > keyboardAbsY
-        ? keyboardAbsY - unsafeAreaHeight - 2 * widget.pickerVerticalOffset
-        : textBoxAbsY - unsafeAreaHeight - 2 * widget.pickerVerticalOffset;
-  }
-
-  Future<void> onChangeMetrics() async {
-    if (await _waitChangeMetrics()) {
-      resize();
-    }
   }
 }
