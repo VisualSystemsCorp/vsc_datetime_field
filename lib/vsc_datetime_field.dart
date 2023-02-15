@@ -76,7 +76,7 @@ class VscDatetimeField extends StatefulWidget {
   final double pickerVerticalOffset;
 
   /// If set to true, in the case where the Picker Box has less than
-  /// _PickerBoxController.minOverlaySpace to grow in the desired [direction], the direction axis
+  /// _PickerBox.minOverlaySpace to grow in the desired [direction], the direction axis
   /// will be temporarily flipped if there's more room available in the opposite
   /// direction.
   ///
@@ -233,7 +233,8 @@ class VscDatetimeField extends StatefulWidget {
 }
 
 class VscDatetimeFieldState extends State<VscDatetimeField> {
-  late final FocusNode _focusNode = FocusNode();
+  late final FocusNode _focusNode =
+      FocusNode(debugLabel: 'VscDatetimeFieldState');
   late final TextEditingController _textEditingController =
       TextEditingController();
   late final _PickerBox _pickerBox;
@@ -306,7 +307,7 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
 
   @override
   void dispose() {
-    _pickerBox.close();
+    _pickerBox.dispose();
     _pickerBox.widgetMounted = false;
     _keyboardVisibilitySubscription?.cancel();
     _effectiveFocusNode.removeListener(_focusNodeListener);
@@ -431,9 +432,6 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
                 ? InkResponse(
                     radius: 24,
                     canRequestFocus: false,
-                    child: Icon(widget.type == VscDatetimeFieldType.time
-                        ? Icons.access_time_outlined
-                        : Icons.event_outlined),
                     onTap: widget.readOnly ||
                             widget.type == VscDatetimeFieldType.time
                         ? null
@@ -445,6 +443,9 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
                               _effectiveFocusNode.requestFocus();
                             }
                           },
+                    child: Icon(widget.type == VscDatetimeFieldType.time
+                        ? Icons.access_time_outlined
+                        : Icons.event_outlined),
                   )
                 : InkResponse(
                     radius: 24,
@@ -831,6 +832,11 @@ class _PickerBox {
   _PickerBox(this.context, this.direction, this.autoFlipDirection)
       : desiredDirection = direction;
 
+  void dispose() {
+    close();
+    widgetMounted = false;
+  }
+
   void open() {
     final widget = context.widget as VscDatetimeField;
     if (widget.readOnly || isOpened || _overlayEntry == null) return;
@@ -882,7 +888,8 @@ class _PickerBox {
         await Future<void>.delayed(const Duration(milliseconds: 170));
         timer += 170;
 
-        if (widgetMounted &&
+        final mounted = widgetMounted;
+        if (mounted &&
             (MediaQuery.of(context).viewInsets != initial ||
                 _findRootMediaQuery() != initialRootMediaQuery)) {
           return true;
@@ -1013,40 +1020,5 @@ class _PickerBox {
     if (await _waitChangeMetrics()) {
       resize();
     }
-  }
-}
-
-/// Supply an instance of this class to the [VscDatetimeField.pickerBoxController]
-/// property to manually control the Picker Box
-class PickerBoxController {
-  _PickerBox? _pickerBox;
-  FocusNode? _effectiveFocusNode;
-
-  /// Opens the Picker Box
-  void open() {
-    _effectiveFocusNode!.requestFocus();
-  }
-
-  bool isOpened() {
-    return _pickerBox!.isOpened;
-  }
-
-  /// Closes the Picker Box
-  void close() {
-    _effectiveFocusNode!.unfocus();
-  }
-
-  /// Opens the Picker Box if closed and vice-versa
-  void toggle() {
-    if (_pickerBox!.isOpened) {
-      close();
-    } else {
-      open();
-    }
-  }
-
-  /// Recalculates the height of the Picker Box
-  void resize() {
-    _pickerBox!.resize();
   }
 }
