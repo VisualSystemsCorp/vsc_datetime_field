@@ -1,23 +1,9 @@
 import 'dart:async';
-import 'dart:io';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:vsc_datetime_field/datetime_parser.dart';
-
-final _kbdSupportedPlatform = (kIsWeb || Platform.isAndroid || Platform.isIOS);
-
-// Unfortunately stolen from flutter/lib/src/material/calendar_date_picker.dart
-const double _dayPickerRowHeight = 42.0;
-const int _maxDayPickerRowCount = 6; // A 31 day month that starts on Saturday.
-// One extra row for the day-of-week header.
-const double _maxDayPickerHeight =
-    _dayPickerRowHeight * (_maxDayPickerRowCount + 1);
-// Value is from flutter/lib/src/material/date_picker.dart:
-const _pickerWidth = 330.0;
 
 final _yearSuffixRegexp = RegExp(r'[-/]y+');
 
@@ -40,16 +26,6 @@ const _timePatternsAmPm = [
 ];
 
 enum VscDatetimeFieldType { date, datetime, time }
-
-/*
- * TODO
- *  - Sometimes there's just not enough room with the kbd open on mobile. Don't show any picker in this case.
- *    But if the mobile kbd closes, recalculate available size
- *  - Sometimes on mobile the screen doesn't scroll with the kbd up, even though the example has a scroll widget,
- *    it doesn't have enough height to perform scrolling.
- *  - Maybe on mobile if there is not enough height, don't show the picker but if the calendar icon is tapped,
- *    show the dialog instead.
- */
 
 class VscDatetimeField extends StatefulWidget {
   /// Type of field desired.
@@ -245,11 +221,6 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
       widget.textFieldConfiguration.focusNode ?? _focusNode;
   late VoidCallback _focusNodeListener;
 
-  // Keyboard detection
-  final Stream<bool>? _keyboardVisibility =
-      (_kbdSupportedPlatform) ? KeyboardVisibilityController().onChange : null;
-  late StreamSubscription<bool>? _keyboardVisibilitySubscription;
-
   final _textFieldGlobalKey = GlobalKey();
 
   DateTime? _value;
@@ -278,7 +249,6 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
 
   @override
   void dispose() {
-    _keyboardVisibilitySubscription?.cancel();
     _effectiveFocusNode.removeListener(_focusNodeListener);
     _focusNode.dispose();
     _textEditingController.dispose();
@@ -364,18 +334,11 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
   Future<void> _openPicker() async {
     switch (widget.type) {
       case VscDatetimeFieldType.date:
-      case VscDatetimeFieldType.datetime:
-        final selected = await showDatePicker(
-          context: context,
-          initialDate: _value ?? DateTime.now(),
-          firstDate: widget.minValue,
-          lastDate: widget.maxValue,
-        );
-
+        final selected = await _showCustomizedDatePicker();
         _effectiveFocusNode.requestFocus();
 
         if (selected != null) {
-          // Modify the field's DateTime, sans the time component.
+          // Modify the field's DateTime date component.
           final currValue = _value ?? testableNow();
           _setValue(
             DateTime(
@@ -391,30 +354,39 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
             setTextAndMoveCursorToEnd: true,
           );
         }
+        break;
+      case VscDatetimeFieldType.datetime:
+        final selectedDate = await _showCustomizedDatePicker();
+        if (selectedDate == null) break;
 
+        var selectedTime = await _showCustomizedTimePicker();
+        _effectiveFocusNode.requestFocus();
+
+        selectedTime ??= _value == null
+            ? const TimeOfDay(hour: 0, minute: 0)
+            : TimeOfDay.fromDateTime(_value!);
+
+        _setValue(
+          DateTime(
+            selectedDate.year,
+            selectedDate.month,
+            selectedDate.day,
+            selectedTime.hour,
+            selectedTime.minute,
+            0,
+            0,
+            0,
+          ),
+          setTextAndMoveCursorToEnd: true,
+        );
         break;
 
       case VscDatetimeFieldType.time:
-        final selected = await showTimePicker(
-          context: context,
-          initialTime: TimeOfDay.now(),
-          // TODO
-          // initialDate: _value ?? DateTime.now(),
-          // firstDate: widget.minValue,
-          // lastDate: widget.maxValue,
-          builder: (context, Widget? child) {
-            return MediaQuery(
-              data:
-                  MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
-              child: child!,
-            );
-          },
-        );
-
+        final selected = await _showCustomizedTimePicker();
         _effectiveFocusNode.requestFocus();
 
         if (selected != null) {
-          // Modify the field's DateTime, sans the date component.
+          // Modify the field's DateTime time component.
           final currValue = _value ?? testableNow();
           _setValue(
             DateTime(
@@ -432,6 +404,32 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
         }
         break;
     }
+  }
+
+  Future<TimeOfDay?> _showCustomizedTimePicker() async {
+    final selected = await showTimePicker(
+      context: context,
+      initialTime: _value == null
+          ? const TimeOfDay(hour: 0, minute: 0)
+          : TimeOfDay.fromDateTime(_value!),
+      builder: (context, Widget? child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
+          child: child!,
+        );
+      },
+    );
+    return selected;
+  }
+
+  Future<DateTime?> _showCustomizedDatePicker() async {
+    final selected = await showDatePicker(
+      context: context,
+      initialDate: _value ?? testableNow(),
+      firstDate: widget.minValue,
+      lastDate: widget.maxValue,
+    );
+    return selected;
   }
 
   void _setValue(

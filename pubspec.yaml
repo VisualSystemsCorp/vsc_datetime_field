@@ -11,7 +11,6 @@ dependencies:
   flutter:
     sdk: flutter
 
-  flutter_keyboard_visibility: ^5.2.0
   intl: ^0.18.0
 
 dev_dependencies:
