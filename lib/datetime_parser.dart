@@ -195,7 +195,7 @@ DateTime _tryParse(
       builder.year ?? now.year,
       builder.month ?? now.month,
       builder.day ?? now.day,
-      builder.hour ?? 0,
+      builder.hour ?? 12, // Default to 12 pm
       builder.minute ?? 0,
       builder.second ?? 0,
       builder.millisecond ?? 0);

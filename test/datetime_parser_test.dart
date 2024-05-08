@@ -64,31 +64,31 @@ main() {
 
   for (final t in [
     // --- Date only formats
-    _Case(dateFmts, '05/02/2022', DateTime.parse('2022-05-02T00:00:00.000')),
+    _Case(dateFmts, '05/02/2022', DateTime.parse('2022-05-02T12:00:00.000')),
     // Ambiguous years:
-    _Case(dateFmts, '5/2/22', DateTime.parse('2022-05-02T00:00:00.000')),
-    _Case(dateFmts, '5/2/62', DateTime.parse('1962-05-02T00:00:00.000')),
+    _Case(dateFmts, '5/2/22', DateTime.parse('2022-05-02T12:00:00.000')),
+    _Case(dateFmts, '5/2/62', DateTime.parse('1962-05-02T12:00:00.000')),
     // Missing year
-    _Case(dateFmts, '5/2', DateTime.parse('$currentYear-05-02T00:00:00.000')),
+    _Case(dateFmts, '5/2', DateTime.parse('$currentYear-05-02T12:00:00.000')),
     // Deviant formatting
-    _Case(dateFmts, '05/02/22', DateTime.parse('2022-05-02T00:00:00.000')),
-    _Case(dateFmts, '05/02/00', DateTime.parse('2000-05-02T00:00:00.000')),
-    _Case(dateFmts, '05/02/01', DateTime.parse('2001-05-02T00:00:00.000')),
-    _Case(dateFmts, '5 2 22', DateTime.parse('2022-05-02T00:00:00.000')),
-    _Case(dateFmts, '5.2.22', DateTime.parse('2022-05-02T00:00:00.000')),
-    _Case(dateFmts, 'May 2, 2022', DateTime.parse('2022-05-02T00:00:00.000')),
-    _Case(dateFmts, 'Feb 2, 2022', DateTime.parse('2022-02-02T00:00:00.000')),
+    _Case(dateFmts, '05/02/22', DateTime.parse('2022-05-02T12:00:00.000')),
+    _Case(dateFmts, '05/02/00', DateTime.parse('2000-05-02T12:00:00.000')),
+    _Case(dateFmts, '05/02/01', DateTime.parse('2001-05-02T12:00:00.000')),
+    _Case(dateFmts, '5 2 22', DateTime.parse('2022-05-02T12:00:00.000')),
+    _Case(dateFmts, '5.2.22', DateTime.parse('2022-05-02T12:00:00.000')),
+    _Case(dateFmts, 'May 2, 2022', DateTime.parse('2022-05-02T12:00:00.000')),
+    _Case(dateFmts, 'Feb 2, 2022', DateTime.parse('2022-02-02T12:00:00.000')),
     _Case(dateFmts, 'September 2 2022',
-        DateTime.parse('2022-09-02T00:00:00.000')),
+        DateTime.parse('2022-09-02T12:00:00.000')),
     _Case(dateFmts, 'september 2 2022',
-        DateTime.parse('2022-09-02T00:00:00.000')),
-    _Case(dateFmts, 'FEB 2, 2022', DateTime.parse('2022-02-02T00:00:00.000')),
-    _Case(dateFmts, '5/2/2022', DateTime.parse('2022-05-02T00:00:00.000')),
+        DateTime.parse('2022-09-02T12:00:00.000')),
+    _Case(dateFmts, 'FEB 2, 2022', DateTime.parse('2022-02-02T12:00:00.000')),
+    _Case(dateFmts, '5/2/2022', DateTime.parse('2022-05-02T12:00:00.000')),
     // Alternate format
-    _Case(dateFmts, '2022-05-10', DateTime.parse('2022-05-10T00:00:00.000')),
+    _Case(dateFmts, '2022-05-10', DateTime.parse('2022-05-10T12:00:00.000')),
     // Day overflows month, which goes into the next month. This is the DateTime behavior.
-    _Case(dateFmts, '2/30/2022', DateTime.parse('2022-03-02T00:00:00.000')),
-    _Case(dateFmts, '4/31/2022', DateTime.parse('2022-05-01T00:00:00.000')),
+    _Case(dateFmts, '2/30/2022', DateTime.parse('2022-03-02T12:00:00.000')),
+    _Case(dateFmts, '4/31/2022', DateTime.parse('2022-05-01T12:00:00.000')),
 
     // --- Datetime formats
     _Case(dateTimeFmts, '5/2 3:46p', DateTime.parse('2023-05-02T15:46:00.000')),
@@ -111,7 +111,7 @@ main() {
         DateTime.parse('2022-05-02T15:46:00.000')),
     _Case(dateTimeFmts, '5/2/22 15:46:34',
         DateTime.parse('2022-05-02T15:46:34.000')),
-    _Case(dateTimeFmts, '9/13/22', DateTime.parse('2022-09-13T00:00:00.000')),
+    _Case(dateTimeFmts, '9/13/22', DateTime.parse('2022-09-13T12:00:00.000')),
     _Case(dateTimeFmts, '12/31/22 1am',
         DateTime.parse('2022-12-31T01:00:00.000')),
     _Case(dateTimeFmts, '12/31/22 1pm',
@@ -154,10 +154,10 @@ main() {
 
     // --- Special-case formats
     //  Standalone month
-    _Case([DateFormat('L')], '12', DateTime.parse('2023-12-06T00:00:00.000')),
-    _Case([DateFormat('L')], 'Dec', DateTime.parse('2023-12-06T00:00:00.000')),
+    _Case([DateFormat('L')], '12', DateTime.parse('2023-12-06T12:00:00.000')),
+    _Case([DateFormat('L')], 'Dec', DateTime.parse('2023-12-06T12:00:00.000')),
     _Case([DateFormat('L')], 'december',
-        DateTime.parse('2023-12-06T00:00:00.000')),
+        DateTime.parse('2023-12-06T12:00:00.000')),
     // Hour 'k' - 1-24
     _Case([DateFormat('k')], '13', DateTime.parse('2023-10-06T12:00:00.000')),
     _Case([DateFormat('k')], '24', DateTime.parse('2023-10-06T23:00:00.000')),
@@ -215,7 +215,7 @@ main() {
       parserFormats: [DateFormat('M/d/y')],
       allowAmbiguousYear: false,
     );
-    expect(result, DateTime.parse('0022-05-02T00:00:00.000'));
+    expect(result, DateTime.parse('0022-05-02T12:00:00.000'));
   });
 
   test('Adjusts for UTC based on param', () {

@@ -410,7 +410,7 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
     final selected = await showTimePicker(
       context: context,
       initialTime: _value == null
-          ? const TimeOfDay(hour: 0, minute: 0)
+          ? const TimeOfDay(hour: 12, minute: 0) // Default to 12pm
           : TimeOfDay.fromDateTime(_value!),
       builder: (context, Widget? child) {
         return MediaQuery(
