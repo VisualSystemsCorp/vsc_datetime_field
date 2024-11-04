@@ -271,13 +271,16 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
       decoration: widget.textFieldConfiguration.decoration.copyWith(
         errorText: _internalErrorText ??
             widget.textFieldConfiguration.decoration.errorText,
-        suffixIcon: InkResponse(
-          radius: 24,
-          canRequestFocus: false,
-          onTap: widget.readOnly ? null : _openPicker,
-          child: Icon(widget.type == VscDatetimeFieldType.time
-              ? Icons.access_time_outlined
-              : Icons.event_outlined),
+        suffixIcon: Semantics(
+          identifier: 'id_datetime_field_suffix_icon',
+          child: InkResponse(
+            radius: 24,
+            canRequestFocus: false,
+            onTap: widget.readOnly ? null : _openPicker,
+            child: Icon(widget.type == VscDatetimeFieldType.time
+                ? Icons.access_time_outlined
+                : Icons.event_outlined),
+          ),
         ),
         // suffixIcon: Row(
         //   mainAxisSize: MainAxisSize.min,
