@@ -269,8 +269,11 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
       focusNode: _effectiveFocusNode,
       controller: _effectiveController,
       decoration: widget.textFieldConfiguration.decoration.copyWith(
-        errorText: _internalErrorText ??
-            widget.textFieldConfiguration.decoration.errorText,
+        // Only set errorText if there's no error widget already provided
+        errorText: widget.textFieldConfiguration.decoration.error == null
+            ? (_internalErrorText ??
+                widget.textFieldConfiguration.decoration.errorText)
+            : null,
         suffixIcon: Semantics(
           identifier: 'id_datetime_field_suffix_icon',
           child: InkResponse(
