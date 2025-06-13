@@ -70,6 +70,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   )),
                   onValueChanged: (value) =>
                       debugPrint('Date only field value: $value'),
+                  onError: (error) => debugPrint('Error: $error'),
                   minValue: DateTime.parse('2020-02-15'),
                   maxValue: DateTime.parse('2025-12-15'),
                 ),
@@ -83,6 +84,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   )),
                   onValueChanged: (value) =>
                       debugPrint('Datetime field value: $value'),
+                  onError: (error) => debugPrint('Error: $error'),
                   minValue: DateTime.parse('2020-02-15 08:00:00'),
                   maxValue: DateTime.parse('2025-12-15 17:00:00'),
                 ),
@@ -96,6 +98,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   )),
                   onValueChanged: (value) =>
                       debugPrint('Time field value: $value'),
+                  onError: (error) => debugPrint('Error: $error'),
                   minValue: DateTime.parse('1970-01-01 08:00:00'),
                   maxValue: DateTime.parse('2099-01-01 17:00:00'),
                 ),
@@ -109,6 +112,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   )),
                   onValueChanged: (value) =>
                       debugPrint('Read-only date field value: $value'),
+                  onError: (error) => debugPrint('Error: $error'),
                   readOnly: true,
                 ),
                 const SizedBox(height: 30),
@@ -122,6 +126,7 @@ class _MyHomePageState extends State<MyHomePage> {
                   )),
                   onValueChanged: (dt) =>
                       _interactiveValueController.value = dt,
+                  onError: (error) => debugPrint('Error: $error'),
                 ),
                 const SizedBox(height: 30),
                 ElevatedButton(

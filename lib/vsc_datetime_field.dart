@@ -61,6 +61,8 @@ class VscDatetimeField extends StatefulWidget {
 
   final void Function(DateTime? value)? onValueChanged;
 
+  final void Function(String errorText)? onError;
+
   final bool readOnly;
 
   /// [DateFormat]s to be used in parsing user-entered dates or date-times, in order of precedence.
@@ -87,6 +89,7 @@ class VscDatetimeField extends StatefulWidget {
     this.textFieldConfiguration = const TextFieldConfiguration(),
     this.autoFlipDirection = true,
     this.onValueChanged,
+    this.onError,
     this.readOnly = false,
     this.valueController,
     DateTime? minValue,
@@ -445,7 +448,6 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
     bool notify = true,
   }) {
     _internalErrorText = null;
-    final oldValue = _value;
     newValue = widget._truncateBasedOnType(newValue);
     if (newValue != null) {
       // Validate between min and max
@@ -475,7 +477,7 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
     }
     setState(() {});
 
-    if (notify && widget.onValueChanged != null && oldValue != _value) {
+    if (notify && widget.onValueChanged != null) {
       widget.onValueChanged!(_value);
     }
   }
@@ -497,8 +499,10 @@ class VscDatetimeFieldState extends State<VscDatetimeField> {
     }
   }
 
-  void _setErrorText(String errorText) =>
-      setState(() => _internalErrorText = errorText);
+  void _setErrorText(String errorText) {
+    setState(() => _internalErrorText = errorText);
+    widget.onError?.call(errorText);
+  }
 }
 
 /// Supply an instance of this class to the [VscDatetimeField.textFieldConfiguration]
